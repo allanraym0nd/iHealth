@@ -8,6 +8,9 @@ import {
 } from 'lucide-react';
 import doctorService from '../api/doctorService';
 import PatientManagement from './sections/PatientManagement'; // Correct import path
+import AppointmentScheduling from './sections/AppointmentScheduling';
+import MedicalRecords from './sections/MedicalRecords';
+import Communication from './sections/Communication';
 
 const DoctorDashboard = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -60,6 +63,16 @@ const DoctorDashboard = () => {
       section: 'appointments',
       icon: Calendar,
       label: 'Appointments'
+    },
+    {
+      section: 'records',    // Add this new item
+      icon: FileText,
+      label: 'Medical Records'
+    },
+    {
+      section: 'communication',
+      icon: MessageSquare,
+      label: 'Communication'
     }
   ];
 
@@ -71,12 +84,16 @@ const DoctorDashboard = () => {
       case 'patients':
         return <PatientManagement />;
       case 'appointments':
-        return <div>Appointments Section</div>;
+        return <AppointmentScheduling />;
+      case 'records':           // Make sure this case matches your navigation
+        return <MedicalRecords />;
+        case 'communication':
+  return <Communication />;
       default:
         return renderDashboardContent();
+
     }
   };
-
   // Dashboard overview content
   const renderDashboardContent = () => {
     if (loading) return <div className="p-4">Loading...</div>;

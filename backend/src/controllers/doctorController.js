@@ -1,5 +1,7 @@
 const Doctor = require('../models/Doctor');
+const Patient = require('../models/Patient');
 const { AppError } = require('../middleware/errorHandler');
+const Appointment = require('../models/Appointment');
 
 
 const doctorController = {
@@ -43,38 +45,67 @@ const doctorController = {
       next(error);
     }
   },
-
+  createPatient: async (req, res, next) => {
+    try {
+      const doctor = await Doctor.findOne({ userId: req.user.id });
+      if (!doctor) {
+        throw new AppError('Doctor not found', 404);
+      }
+  
+      const patient = new Patient({
+        name: req.body.name,
+        age: req.body.age,
+        gender: req.body.gender || 'Other', // Add a default if not provided
+        contact: {
+          phone: req.body.contact.phone,
+          email: req.body.contact.email
+        },
+        status: req.body.status || 'active'
+      });
+  
+      await patient.save();
+      doctor.patients.push(patient._id);
+      await doctor.save();
+  
+      res.status(201).json({ status: 'success', data: patient });
+    } catch (error) {
+      next(error);
+    }
+  },
   getPatients: async (req, res, next) => {
     try {
-      console.log('Getting patients for user:', req.user.id);
+      console.log('User ID:', req.user.id);
       
-      // First try to find the doctor
-      let doctor = await Doctor.findOne({ userId: req.user.id });
-      
-      // If no doctor record exists, create one
-      if (!doctor) {
-        console.log('No doctor record found, creating one...');
-        doctor = new Doctor({
+      // Check if doctor exists
+      const doctorExists = await Doctor.findOne({ userId: req.user.id });
+      console.log('Doctor exists:', !!doctorExists);
+  
+      if (!doctorExists) {
+        console.log('No doctor found. Creating new doctor...');
+        const newDoctor = new Doctor({
           userId: req.user.id,
-          name: 'Dr. Smith', // Default name
+          name: 'Default Doctor',
           specialization: 'General',
           patients: []
         });
-        await doctor.save();
-        console.log('Created new doctor record');
+        await newDoctor.save();
       }
   
-      // Return patients (even if empty array)
+      // Fetch doctor with populated patients
+      const doctor = await Doctor.findOne({ userId: req.user.id })
+        .populate('patients');
+      
+      console.log('Patients count:', doctor.patients.length);
+      
       res.json({
         status: 'success',
-        data: doctor.patients || []
+        data: doctor.patients
       });
     } catch (error) {
       console.error('Error in getPatients:', error);
       next(error);
     }
-  },
-
+  }, 
   // Get doctor by ID
   getById: async (req, res, next) => {
     try {
@@ -203,20 +234,128 @@ getProfile: async (req, res, next) => {
   }
 },
 
-
-
-getAppointments: async (req, res, next) => {
+createAppointment: async (req, res, next) => {
   try {
     const doctor = await Doctor.findOne({ userId: req.user.id });
-
     if (!doctor) {
       throw new AppError('Doctor not found', 404);
     }
 
-    // Return empty array if no appointments
+    const appointment = new Appointment({
+      doctor: doctor._id,
+      patient: req.body.patientId,
+      date: req.body.date,
+      time: req.body.time,
+      type: req.body.type,
+      notes: req.body.notes,
+      status: 'scheduled'
+    });
+
+    await appointment.save();
+    doctor.appointments.push(appointment._id);
+    await doctor.save();
+
+    res.status(201).json({
+      status: 'success',
+      data: appointment
+    });
+  } catch (error) {
+    next(error);
+  }
+},
+
+getAppointments: async (req, res, next) => {
+  try {
+    const doctor = await Doctor.findOne({ userId: req.user.id })
+      .populate({
+        path: 'appointments',
+        populate: {
+          path: 'patient',
+          model: 'Patient'
+        }
+      });
+    
     res.json({
       status: 'success',
-      data: []  // Initially return empty array since we haven't added any appointments yet
+      data: doctor.appointments || []
+    });
+  } catch (error) {
+    next(error);
+  }
+},
+
+cancelAppointment: async (req, res, next) => {
+  try {
+    const appointment = await Appointment.findByIdAndUpdate(
+      req.params.id,
+      { status: 'Cancelled' },
+      { new: true }
+    );
+
+    if (!appointment) {
+      throw new AppError('Appointment not found', 404);
+    }
+
+    res.json({
+      status: 'success',
+      data: appointment
+    });
+  } catch (error) {
+    next(error);
+  }
+},
+
+completeAppointment: async (req, res, next) => {
+  try {
+    const appointment = await Appointment.findByIdAndUpdate(
+      req.params.id, 
+      { 
+        status: 'completed',
+        completedAt: new Date()
+      },
+      { new: true }
+    ).populate('patient');
+
+    if (!appointment) {
+      return res.status(404).json({ 
+        status: 'error', 
+        message: 'Appointment not found' 
+      });
+    }
+
+    res.json({
+      status: 'success',
+      data: appointment
+    });
+  } catch (error) {
+    next(error);
+  }
+},
+
+rescheduleAppointment: async (req, res, next) => {
+  try {
+    const { date, time } = req.body;
+    
+    const appointment = await Appointment.findByIdAndUpdate(
+      req.params.id,
+      { 
+        date, 
+        time,
+        status: 'scheduled' // Reset to scheduled if it was cancelled
+      },
+      { new: true }
+    ).populate('patient');
+
+    if (!appointment) {
+      return res.status(404).json({ 
+        status: 'error', 
+        message: 'Appointment not found' 
+      });
+    }
+
+    res.json({
+      status: 'success',
+      data: appointment
     });
   } catch (error) {
     next(error);
@@ -235,5 +374,7 @@ getSchedule: async (req, res, next) => {
   }
 }
 };
+
+
 
 module.exports = doctorController;

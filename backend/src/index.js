@@ -15,6 +15,8 @@ require('./models/Billing');
 require('./models/Appointment');
 
 
+
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -33,6 +35,9 @@ const nurseRoutes = require('./routes/nurseRoutes');
 const pharmacyRoutes = require('./routes/pharmacyRoutes');
 const labRoutes = require('./routes/labRoutes');
 const billingRoutes = require('./routes/billingRoutes');
+const medicalRecordRoute = require('./routes/medicalRecordRoute');
+const messageRoutes = require('./routes/messageRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/patients', patientRoutes);
@@ -41,7 +46,9 @@ app.use('/api/nurses', nurseRoutes);
 app.use('/api/pharmacy', pharmacyRoutes);
 app.use('/api/lab', labRoutes);
 app.use('/api/billing', billingRoutes);
-
+app.use('/api/medical-records', medicalRecordRoute);
+app.use('/api/messages', messageRoutes);
+app.use('/api', userRoutes);
 // Database connection with better logging
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
