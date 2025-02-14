@@ -16,14 +16,42 @@ const registerValidation = [
   check('role')
     .notEmpty().withMessage('Role is required')
     .isIn(['doctor', 'nurse', 'patient', 'pharmacy', 'lab', 'billing'])
-    .withMessage('Invalid role')
+    .withMessage('Invalid role'),
+
+  // Patient specific validations - only required if role is patient
+  check('name')
+    .if(check('role').equals('patient'))
+    .notEmpty().withMessage('Name is required for patients')
+    .trim(),
+
+  check('age')
+    .if(check('role').equals('patient'))
+    .notEmpty().withMessage('Age is required for patients')
+    .isNumeric().withMessage('Age must be a number'),
+
+  check('gender')
+    .if(check('role').equals('patient'))
+    .notEmpty().withMessage('Gender is required for patients')
+    .isIn(['Male', 'Female', 'Other'])
+    .withMessage('Invalid gender'),
+
+  check('phone')
+    .if(check('role').equals('patient'))
+    .notEmpty().withMessage('Phone number is required for patients')
+    .trim(),
+
+  check('email')
+    .if(check('role').equals('patient'))
+    .notEmpty().withMessage('Email is required for patients')
+    .isEmail().withMessage('Invalid email format')
+    .trim()
 ];
 
 const loginValidation = [
   check('username')
     .notEmpty().withMessage('Username is required')
     .trim(),
-  
+    
   check('password')
     .notEmpty().withMessage('Password is required')
 ];

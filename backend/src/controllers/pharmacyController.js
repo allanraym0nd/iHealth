@@ -42,6 +42,7 @@ const pharmacyController = {
       next(error);
     }
   },
+  
 
   // Get inventory
   getInventory: async (req, res, next) => {
