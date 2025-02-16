@@ -178,6 +178,25 @@ getUsers: async () => {
       console.error('Schedule error:', error.response || error);
       throw error;
     }
+  },
+  getPrescriptions: async () => {
+    try {
+      const response = await api.get('/doctors/prescriptions');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching prescriptions:', error);
+      throw error;
+    }
+  },
+  
+  createPrescription: async (prescriptionData) => {
+    try {
+      const response = await api.post('/doctors/prescriptions', prescriptionData);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating prescription:', error);
+      throw error;
+    }
   }
 };
 

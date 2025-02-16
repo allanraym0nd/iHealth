@@ -4,6 +4,7 @@ import {
   Users, 
   Calendar, 
   FileText, 
+  Pill,
   MessageSquare 
 } from 'lucide-react';
 import doctorService from '../api/doctorService';
@@ -11,6 +12,7 @@ import PatientManagement from './sections/PatientManagement'; // Correct import 
 import AppointmentScheduling from './sections/AppointmentScheduling';
 import MedicalRecords from './sections/MedicalRecords';
 import Communication from './sections/Communication';
+import Prescriptions from './sections/Prescriptions';
 
 const DoctorDashboard = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -70,6 +72,11 @@ const DoctorDashboard = () => {
       label: 'Medical Records'
     },
     {
+      section: 'prescriptions',  
+      icon: Pill,  
+      label: 'Prescriptions'
+    },
+    {
       section: 'communication',
       icon: MessageSquare,
       label: 'Communication'
@@ -87,6 +94,8 @@ const DoctorDashboard = () => {
         return <AppointmentScheduling />;
       case 'records':           // Make sure this case matches your navigation
         return <MedicalRecords />;
+        case 'prescriptions':  // Add this case
+      return <Prescriptions />;
         case 'communication':
   return <Communication />;
       default:

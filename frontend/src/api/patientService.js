@@ -93,7 +93,6 @@ const patientService = {
       throw error;
     }
   },
-
   // Bills
   getBills: async () => {
     try {
@@ -119,13 +118,24 @@ const patientService = {
     }
   },
 
+  requestRefill: async (prescriptionId, refillData) => {
+    try {
+      const response = await api.post(`/patients/prescriptions/${prescriptionId}/refill`, refillData);
+      return response.data;
+    } catch (error) {
+      console.error('Error requesting refill:', error);
+      throw error;
+    }
+  },
   // Medical Records
   getMedicalRecords: async () => {
     try {
+      console.log('Fetching medical records');
       const response = await api.get('/patients/medical-records');
+      console.log('Medical records response:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error fetching medical records:', error);
+      console.error('Error fetching medical records:', error.response ? error.response.data : error.message);
       throw error;
     }
   },
@@ -147,6 +157,25 @@ const patientService = {
       return response.data;
     } catch (error) {
       console.error('Error updating profile:', error);
+      throw error;
+    }
+  },
+  getBillingData: async () => {
+    try {
+      const response = await api.get('/patients/billing');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching billing data:', error);
+      throw error;
+    }
+  },
+  
+  makePayment: async (invoiceId, paymentDetails) => {
+    try {
+      const response = await api.post(`/patients/billing/${invoiceId}/pay`, paymentDetails);
+      return response.data;
+    } catch (error) {
+      console.error('Error processing payment:', error);
       throw error;
     }
   },

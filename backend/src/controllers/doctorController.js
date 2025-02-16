@@ -1,7 +1,11 @@
 const Doctor = require('../models/Doctor');
 const Patient = require('../models/Patient');
+const bcrypt = require('bcryptjs');
 const { AppError } = require('../middleware/errorHandler');
 const Appointment = require('../models/Appointment');
+const User = require('../models/User');
+const Prescription = require('../models/Prescription');
+
 
 
 const doctorController = {
@@ -52,10 +56,23 @@ const doctorController = {
         throw new AppError('Doctor not found', 404);
       }
   
+      // Hash the default password
+      const hashedPassword = await bcrypt.hash('123456', 10);
+  
+      // Create a user account for the patient
+      const user = new User({
+        username: req.body.contact.email,
+        password: hashedPassword, // Use hashed password
+        role: 'patient'
+      });
+  
+      await user.save();
+  
       const patient = new Patient({
+        userId: user._id,
         name: req.body.name,
         age: req.body.age,
-        gender: req.body.gender || 'Other', // Add a default if not provided
+        gender: req.body.gender || 'Other',
         contact: {
           phone: req.body.contact.phone,
           email: req.body.contact.email
@@ -67,11 +84,17 @@ const doctorController = {
       doctor.patients.push(patient._id);
       await doctor.save();
   
-      res.status(201).json({ status: 'success', data: patient });
+      res.status(201).json({ 
+        status: 'success', 
+        data: patient 
+      });
     } catch (error) {
       next(error);
     }
   },
+  
+  
+      
   getPatients: async (req, res, next) => {
     try {
       console.log('User ID:', req.user.id);
@@ -372,7 +395,49 @@ getSchedule: async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+},
+getPrescriptions: async (req, res, next) => {
+  try {
+    const doctor = await Doctor.findOne({ userId: req.user.id });
+    const prescriptions = await Prescription.find({ doctor: doctor._id })
+      .populate('patient')
+      .sort('-createdAt');
+
+    res.json({
+      status: 'success',
+      data: prescriptions
+    });
+  } catch (error) {
+    next(error);
+  }
+},
+
+createPrescription: async (req, res, next) => {
+  try {
+    const doctor = await Doctor.findOne({ userId: req.user.id });
+    if (!doctor) {
+      throw new AppError('Doctor not found', 404);
+    }
+
+    const prescription = new Prescription({
+      doctor: doctor._id,
+      patient: req.body.patientId,
+      medications: req.body.medications,
+      notes: req.body.notes,
+      status: 'active'
+    });
+
+    await prescription.save();
+
+    res.status(201).json({
+      status: 'success',
+      data: prescription
+    });
+  } catch (error) {
+    next(error);
+  }
 }
+
 };
 
 

@@ -1,43 +1,76 @@
 const MedicalRecord = require('../models/MedicalRecord');
 const Patient = require('../models/Patient');
+const Doctor = require('../models/Doctor');
 const { AppError } = require('../middleware/errorHandler');
 
+
 const medicalRecordController = {
+  
   create: async (req, res, next) => {
     try {
       const { patientId, diagnosis, symptoms, treatment, notes } = req.body;
-
+  
+      console.log('Creating medical record:', {
+        patientId,
+        userId: req.user.id,
+        diagnosis,
+        symptoms,
+        treatment
+      });
+  
+      // Find the doctor using the logged-in user's ID
+      const doctor = await Doctor.findOne({ userId: req.user.id });
+  
+      console.log('Found Doctor:', doctor);
+  
+      if (!doctor) {
+        throw new AppError('Doctor not found', 404);
+      }
+  
       const medicalRecord = new MedicalRecord({
         patient: patientId,
-        doctor: req.user.id,
+        doctor: doctor._id,
         diagnosis,
         symptoms,
         treatment,
         notes
       });
-
+  
+      console.log('Medical Record to be saved:', medicalRecord);
+  
       await medicalRecord.save();
-
+  
+      console.log('Medical Record saved successfully');
+  
       res.status(201).json({
         status: 'success',
         data: medicalRecord
       });
     } catch (error) {
+      console.error('Error creating medical record:', error);
       next(error);
     }
   },
-
+   
   getAll: async (req, res, next) => {
     try {
-      const records = await MedicalRecord.find({ doctor: req.user.id })
+      console.log('User ID for medical records:', req.user.id);
+  
+      const doctor = await Doctor.findOne({ userId: req.user.id });
+      console.log('Doctor found:', doctor);
+  
+      const records = await MedicalRecord.find({ doctor: doctor._id })
         .populate('patient')
         .sort('-date');
-
+  
+      console.log('Medical Records found:', records);
+  
       res.json({
         status: 'success',
         data: records
       });
     } catch (error) {
+      console.error('Error fetching medical records:', error);
       next(error);
     }
   },

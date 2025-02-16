@@ -73,8 +73,8 @@ const register = async (req, res, next) => {
 const login = async (req, res, next) => {
   try {
     const { username, password } = req.body;
-    console.log("Username:", username);
-    console.log("Password:", password);
+   // console.log("Username:", username);
+    // console.log("Password:", password);
 
     // Check if user exists
     const user = await User.findOne({ username });
@@ -101,7 +101,7 @@ const login = async (req, res, next) => {
       role: user.role
     });
   } catch (error) {
-    console.error('Login error:', error);
+   // console.error('Login error:', error);
     res.status(500).json({ message: 'Login failed. Please try again.' });
   }
 };

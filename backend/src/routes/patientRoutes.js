@@ -14,13 +14,22 @@ router.get('/appointments', auth, patientController.getAppointments);
 router.post('/appointments', auth, patientController.requestAppointment);
 router.put('/appointments/:id/cancel', auth, patientController.cancelAppointment);
 
+// Medical Records Routes
+
+
 // Prescriptions Routes
 router.get('/prescriptions', auth, patientController.getPrescriptions);
 router.get('/prescriptions/:id', auth, patientController.getPrescriptionById);
 
 // Bills Routes
-router.get('/bills', auth, patientController.getBills);
-router.get('/bills/:id', auth, patientController.getBillById);
+router.get('/billing', auth, patientController.getBillingData);
+router.post('/billing/:invoiceId/pay', auth, patientController.makePayment);
+
+router.get('/medical-records', auth, patientController.getMedicalRecords);
+router.get('/medical-records/:id', auth, patientController.getMedicalRecordById);
+
+router.get('/prescriptions', auth, patientController.getPrescriptions);
+router.get('/prescriptions/:id', auth, patientController.getPrescriptionById);
 
 // Doctors List Route
 router.get('/doctors', auth, patientController.getDoctors);

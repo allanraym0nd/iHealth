@@ -24,6 +24,10 @@ router.post('/medical-records', auth, medicalRecordController.create);
 router.get('/medical-records', auth, medicalRecordController.getAll);
 router.get('/medical-records/:id', auth, medicalRecordController.getById);
 
+// Add these routes
+router.get('/prescriptions', auth, doctorController.getPrescriptions);
+router.post('/prescriptions', auth, doctorController.createPrescription);
+
 // General CRUD routes
 router.post('/', auth, doctorValidation, validate, doctorController.create);
 router.get('/', auth, doctorController.getAll);

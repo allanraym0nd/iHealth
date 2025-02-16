@@ -26,10 +26,10 @@ const medicalRecordSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Prescription'
   }],
-  testResults: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'TestResult'
-  }],
+ // testResults: [{
+  //  type: mongoose.Schema.Types.ObjectId,
+ //   ref: 'TestResult'
+//  }],
   notes: String,
   attachments: [String]
 }, { timestamps: true });
