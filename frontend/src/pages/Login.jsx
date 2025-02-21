@@ -95,7 +95,7 @@ const Login = () => {
      <div className="bg-white p-8 rounded-lg shadow-2xl w-96">
     
        <div className="text-center mb-8">
-       <h1 className="text-2xl font-bold text-center mb-6">Hospital Management System</h1>
+       <h1 className="text-2xl font-bold text-center mb-6">iHealthManager:An Integrated HMS for UoN Health Services</h1>
          <h1 className="text-3xl font-bold text-gray-800">Welcome Back</h1>
          <p className="text-gray-500 mt-2">Please sign in to continue</p>
        </div>
