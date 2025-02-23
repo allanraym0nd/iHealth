@@ -4,12 +4,10 @@ const labValidation = {
   // Test order validation
   testOrderValidation: [
     check('patient')
-      .notEmpty().withMessage('Patient ID is required')
-      .isMongoId().withMessage('Invalid patient ID'),
+      .notEmpty().withMessage('Patient is required'),
 
     check('doctor')
-      .notEmpty().withMessage('Doctor ID is required')
-      .isMongoId().withMessage('Invalid doctor ID'),
+      .notEmpty().withMessage('Doctor is required'),
 
     check('testType')
       .notEmpty().withMessage('Test type is required')
@@ -17,10 +15,9 @@ const labValidation = {
 
     check('scheduledDate')
       .notEmpty().withMessage('Scheduled date is required')
-      .isDate().withMessage('Invalid date format')
   ],
 
-  // Test results validation
+  // Keep your other validations as they are
   resultValidation: [
     check('results.data')
       .notEmpty().withMessage('Result data is required'),
@@ -34,7 +31,6 @@ const labValidation = {
       .isDate().withMessage('Invalid date format')
   ],
 
-  // Inventory validation
   inventoryValidation: [
     check('item')
       .notEmpty().withMessage('Item name is required')
