@@ -38,12 +38,25 @@ const CreateTestOrderModal = ({ isOpen, onClose, onTestOrderCreated }) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
+  
+    console.log('Sending test order data:', {
+      patient: formData.patient,
+      doctor: formData.doctor,
+      testType: formData.testType,
+      scheduledDate: formData.scheduledDate
+    });
+  
     try {
-      await labService.createTestOrder(formData);
+      const response = await labService.createTestOrder({
+        patient: formData.patient,
+        doctor: formData.doctor,
+        testType: formData.testType,
+        scheduledDate: formData.scheduledDate
+      });
       onTestOrderCreated();
       onClose();
     } catch (error) {
+      console.error('Full error details:', error);
       setError(error.response?.data?.message || 'Failed to create test order');
     } finally {
       setLoading(false);
