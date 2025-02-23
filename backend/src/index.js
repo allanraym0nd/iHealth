@@ -66,10 +66,10 @@ mongoose.connect(process.env.MONGODB_URI)
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
- console.log(`Server running on port ${PORT}`);
- console.log('Routes configured:');
- // console.log('- /api/auth');
- // console.log('- /api/doctors');
-  //console.log('- /api/patients');
+console.log(`Server running on port ${PORT}`);
+console.log('Routes configured:');
+console.log('- /api/auth');
+console.log('- /api/doctors');
+console.log('- /api/patients');
   // ... etc
 });
