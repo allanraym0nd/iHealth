@@ -35,12 +35,34 @@ const AddResultModal = ({ isOpen, onClose, onResultAdded }) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
+  
+    console.log('Submitting Test Result:', {
+      testId: formData.testId,
+      value: formData.value,
+      unit: formData.unit,
+      referenceRange: formData.referenceRange,
+      interpretation: formData.interpretation,
+      isCritical: formData.isCritical,
+      notes: formData.notes
+    });
+  
     try {
-      await labService.addTestResult(formData);
-      onResultAdded();
+      const response = await labService.addTestResult({
+        testId: formData.testId,
+        value: formData.value,
+        unit: formData.unit,
+        referenceRange: formData.referenceRange,
+        interpretation: formData.interpretation,
+        isCritical: formData.isCritical,
+        notes: formData.notes
+      });
+  
+      console.log('Server Response:', response);
+  
+      onResultAdded(); // Changed from onTestOrderCreated
       onClose();
     } catch (error) {
+      console.error('Detailed Error:', error.response?.data || error);
       setError(error.response?.data?.message || 'Failed to add test result');
     } finally {
       setLoading(false);
@@ -197,6 +219,11 @@ const ResultsManagement = () => {
     try {
       setLoading(true);
       const response = await labService.getTestResults();
+      
+      // Log the full response for debugging
+      console.log('Fetched Test Results Response:', response);
+      
+      // Ensure we're accessing the correct data property
       setResults(response.data || []);
       setError(null);
     } catch (err) {
@@ -270,45 +297,37 @@ const ResultsManagement = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {filteredResults.length === 0 ? (
-              <tr>
-                <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
-                  No results found
-                </td>
-              </tr>
-            ) : (
-              filteredResults.map((result) => (
-                <tr key={result._id}>
-                  <td className="px-6 py-4">{result.patient?.name}</td>
-                  <td className="px-6 py-4">{result.testType}</td>
-                  <td className="px-6 py-4">
-                    {result.value} {result.unit}
-                  </td>
-                  <td className="px-6 py-4">{result.referenceRange}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      result.interpretation === 'Normal'
-                        ? 'bg-green-100 text-green-800'
-                        : result.interpretation === 'High'
-                        ? 'bg-red-100 text-red-800'
-                        : result.interpretation === 'Low'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {result.interpretation}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    {result.isCritical && (
-                      <span className="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">
-                        CRITICAL
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
+  {results.map((result) => (
+    <tr key={result._id}>
+      <td className="px-6 py-4">{result.patient?.name || 'Unknown Patient'}</td>
+      <td className="px-6 py-4">{result.testType}</td>
+      <td className="px-6 py-4">
+        {result.value} {result.unit}
+      </td>
+      <td className="px-6 py-4">{result.referenceRange}</td>
+      <td className="px-6 py-4">
+        <span className={`px-2 py-1 text-xs rounded-full ${
+          result.interpretation === 'Normal'
+            ? 'bg-green-100 text-green-800'
+            : result.interpretation === 'High'
+            ? 'bg-red-100 text-red-800'
+            : result.interpretation === 'Low'
+            ? 'bg-yellow-100 text-yellow-800'
+            : 'bg-gray-100 text-gray-800'
+        }`}>
+          {result.interpretation}
+        </span>
+      </td>
+      <td className="px-6 py-4">
+        {result.isCritical && (
+          <span className="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">
+            CRITICAL
+          </span>
+        )}
+      </td>
+    </tr>
+  ))}
+</tbody>
         </table>
       </div>
 
