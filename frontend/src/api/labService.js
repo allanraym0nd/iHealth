@@ -54,7 +54,7 @@ collectSample: async (sampleData) => {
     throw error;
   }
 },
-  // Add to labService.js
+
 getTestResults: async () => {
   try {
     const response = await api.get('/lab/test-results');
@@ -67,6 +67,7 @@ getTestResults: async () => {
 
 addTestResult: async (resultData) => {
   try {
+    console.log('Sending test result data:', resultData);
     const response = await api.post('/lab/test-results', resultData);
     return response.data;
   } catch (error) {
@@ -135,17 +136,25 @@ updateTestResult: async (resultId, resultData) => {
     }
   },
   
-  createTestOrder: async (testData) => {
+  
+  createTestOrder: async (orderData) => {
     try {
+      console.log('Data being sent to API:', {
+        patient: orderData.patient,
+        doctor: orderData.doctor,
+        testType: orderData.testType,
+        scheduledDate: orderData.scheduledDate
+      });
+  
       const response = await api.post('/lab/test-orders', {
-        patientId: testData.patient,  // Match backend expectations
-        doctorId: testData.doctor,
-        testType: testData.testType,
-        scheduledDate: testData.scheduledDate
+        patient: orderData.patient,
+        doctor: orderData.doctor,
+        testType: orderData.testType,
+        scheduledDate: orderData.scheduledDate
       });
       return response.data;
     } catch (error) {
-      console.error('Error creating test order:', error);
+      console.error('Detailed error creating test order:', error.response?.data || error);
       throw error;
     }
   },
@@ -202,17 +211,7 @@ updateTestResult: async (resultId, resultData) => {
     }
   },
 
-  // Results Management
-  addTestResult: async (testId, resultData) => {
-    try {
-      const response = await api.post(`/lab/tests/${testId}/results`, resultData);
-      return response.data;
-    } catch (error) {
-      console.error('Error adding test result:', error);
-      throw error;
-    }
-  },
-
+  
   // Inventory Management
   getInventory: async () => {
     try {
