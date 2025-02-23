@@ -1,31 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, AlertCircle } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import labService from '../../api/labService';
 
 const CollectSampleModal = ({ isOpen, onClose, onSampleCollected }) => {
   const [formData, setFormData] = useState({
-    patientId: '',
+    patient: '',
     testType: '',
     collectionDate: '',
-    notes: '',
-    storageLocation: ''
+    storageLocation: '',
+    notes: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [patients, setPatients] = useState([]);
+  const [testOrders, setTestOrders] = useState([]);
 
   useEffect(() => {
     if (isOpen) {
-      fetchPatients();
+      fetchPendingTestOrders();
     }
   }, [isOpen]);
 
-  const fetchPatients = async () => {
+  const fetchPendingTestOrders = async () => {
     try {
-      const response = await labService.getPatients();
-      setPatients(response.data || []);
+      const response = await labService.getPendingTests();
+      setTestOrders(response.data || []);
     } catch (error) {
-      console.error('Error fetching patients:', error);
+      console.error('Error fetching test orders:', error);
     }
   };
 
@@ -33,9 +33,7 @@ const CollectSampleModal = ({ isOpen, onClose, onSampleCollected }) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-  
-    console.log('Sending sample data:', formData); // Add this
-  
+
     try {
       await labService.collectSample(formData);
       onSampleCollected();
@@ -59,35 +57,25 @@ const CollectSampleModal = ({ isOpen, onClose, onSampleCollected }) => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Patient</label>
+            <label className="block text-sm font-medium text-gray-700">Test Order</label>
             <select
               className="mt-1 w-full p-2 border rounded-lg"
-              value={formData.patientId}
-              onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
+              onChange={(e) => {
+                const selectedOrder = testOrders.find(order => order._id === e.target.value);
+                setFormData({
+                  ...formData,
+                  patient: selectedOrder?.patient?._id,
+                  testType: selectedOrder?.testType
+                });
+              }}
               required
             >
-              <option value="">Select Patient</option>
-              {patients.map(patient => (
-                <option key={patient._id} value={patient._id}>
-                  {patient.name}
+              <option value="">Select Test Order</option>
+              {testOrders.map(order => (
+                <option key={order._id} value={order._id}>
+                  {order.patient?.name} - {order.testType}
                 </option>
               ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Test Type</label>
-            <select
-              className="mt-1 w-full p-2 border rounded-lg"
-              value={formData.testType}
-              onChange={(e) => setFormData({ ...formData, testType: e.target.value })}
-              required
-            >
-              <option value="">Select Test Type</option>
-              <option value="Blood Test">Blood Test</option>
-              <option value="Urine Test">Urine Test</option>
-              <option value="Swab Test">Swab Test</option>
-              <option value="Tissue Sample">Tissue Sample</option>
             </select>
           </div>
 
@@ -126,8 +114,7 @@ const CollectSampleModal = ({ isOpen, onClose, onSampleCollected }) => {
           </div>
 
           {error && (
-            <div className="text-red-500 text-sm flex items-center">
-              <AlertCircle size={16} className="mr-1" />
+            <div className="text-red-500 text-sm">
               {error}
             </div>
           )}
@@ -188,8 +175,8 @@ const SampleManagement = () => {
   const filteredSamples = samples.filter(sample => {
     const matchesSearch = 
       sample.patient?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sample.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sample.sampleId?.toLowerCase().includes(searchTerm.toLowerCase());
+      sample.testType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sample.storageLocation?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = filterStatus === 'all' || sample.status === filterStatus;
 
@@ -258,9 +245,9 @@ const SampleManagement = () => {
             ) : (
               filteredSamples.map((sample) => (
                 <tr key={sample._id}>
-                  <td className="px-6 py-4">{sample.sampleId}</td>
+                  <td className="px-6 py-4">{sample._id}</td>
                   <td className="px-6 py-4">{sample.patient?.name}</td>
-                  <td className="px-6 py-4">{sample.type}</td>
+                  <td className="px-6 py-4">{sample.testType}</td>
                   <td className="px-6 py-4">
                     {new Date(sample.collectionDate).toLocaleString()}
                   </td>
