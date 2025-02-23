@@ -58,14 +58,45 @@ const labController = {
   // Create test order
   createTestOrder: async (req, res, next) => {
     try {
+      console.log('Received in controller:', req.body);
+      
+      // Validate input
+      if (!req.body.patient) {
+        return res.status(400).json({ 
+          status: 'error', 
+          message: 'Patient is required' 
+        });
+      }
+      if (!req.body.doctor) {
+        return res.status(400).json({ 
+          status: 'error', 
+          message: 'Doctor is required' 
+        });
+      }
+      if (!req.body.testType) {
+        return res.status(400).json({ 
+          status: 'error', 
+          message: 'Test type is required' 
+        });
+      }
+      if (!req.body.scheduledDate) {
+        return res.status(400).json({ 
+          status: 'error', 
+          message: 'Scheduled date is required' 
+        });
+      }
+  
       const lab = await Lab.findOne();
       if (!lab) {
-        throw new AppError('Lab not found', 404);
+        return res.status(404).json({ 
+          status: 'error', 
+          message: 'Lab not found' 
+        });
       }
   
       const newTestOrder = {
-        patient: req.body.patientId,
-        doctor: req.body.doctorId,
+        patient: req.body.patient,
+        doctor: req.body.doctor,
         testType: req.body.testType,
         status: 'Pending',
         scheduledDate: req.body.scheduledDate
@@ -76,13 +107,17 @@ const labController = {
   
       res.status(201).json({
         status: 'success',
-        data: lab.testOrders[lab.testOrders.length - 1]
+        data: newTestOrder
       });
     } catch (error) {
-      next(error);
+      console.error('Create test order error:', error);
+      res.status(500).json({
+        status: 'error',
+        message: 'Internal server error',
+        details: error.message
+      });
     }
   },
-
   // Update test status
   updateTestStatus: async (req, res, next) => {
     try {
@@ -284,24 +319,12 @@ getReorderRequests: async (req, res, next) => {
 
   getSamples: async (req, res, next) => {
     try {
-      const lab = await Lab.findOne();
-      const testOrders = lab?.testOrders.filter(order => 
-        order.status === 'sample_collected' || order.status === 'processing'
-      ) || [];
-  
-      const samples = testOrders.map(order => ({
-        _id: order._id,
-        sampleId: order._id,
-        patient: order.patient,
-        type: order.testType,
-        collectionDate: order.scheduledDate,
-        status: order.status,
-        storageLocation: order.sampleDetails?.location || 'Lab Storage'
-      }));
+      const lab = await Lab.findOne()
+        .populate('samples.patient', 'name');  // Only populate patient, removed TestOrder reference
   
       res.json({
         status: 'success',
-        data: samples
+        data: lab.samples || []
       });
     } catch (error) {
       next(error);
@@ -311,12 +334,18 @@ getReorderRequests: async (req, res, next) => {
   getTestResults: async (req, res, next) => {
     try {
       const lab = await Lab.findOne()
-        .populate('testOrders.patient')
-        .populate('testOrders.doctor');
+        .populate('testOrders.patient', 'name')
+        .populate('testOrders.doctor', 'name');
   
-      const results = lab?.testOrders.filter(order => 
-        order.results && Object.keys(order.results).length > 0
-      ).map(order => ({
+      const results = lab ? lab.testOrders.filter(order => {
+        // Only include orders with results
+        return (
+          order.status === 'Completed' && 
+          order.results && 
+          Object.keys(order.results).length > 0 &&
+          order.patient
+        );
+      }).map(order => ({
         _id: order._id,
         patient: order.patient,
         testType: order.testType,
@@ -324,36 +353,42 @@ getReorderRequests: async (req, res, next) => {
         unit: order.results.unit,
         referenceRange: order.results.referenceRange,
         interpretation: order.results.interpretation,
-        isCritical: order.results.isCritical,
-        notes: order.results.notes,
-        completedAt: order.results.date
-      })) || [];
+        isCritical: order.results.isCritical || false,
+        notes: order.results.notes || ''
+      })) : [];
+  
+      console.log('Sending test results:', results);
   
       res.json({
         status: 'success',
         data: results
       });
     } catch (error) {
+      console.error('Error fetching test results:', error);
       next(error);
     }
   },
-  
+
   addTestResult: async (req, res, next) => {
     try {
       const lab = await Lab.findOne();
       
       const testOrder = lab.testOrders.id(req.body.testId);
       if (!testOrder) {
-        throw new AppError('Test order not found', 404);
+        return res.status(404).json({
+          status: 'error',
+          message: 'Test order not found'
+        });
       }
   
+      // Ensure comprehensive result recording
       testOrder.results = {
         value: req.body.value,
         unit: req.body.unit,
         referenceRange: req.body.referenceRange,
         interpretation: req.body.interpretation,
-        isCritical: req.body.isCritical,
-        notes: req.body.notes,
+        isCritical: req.body.isCritical || false,
+        notes: req.body.notes || '',
         date: new Date()
       };
       testOrder.status = 'Completed';
@@ -365,9 +400,12 @@ getReorderRequests: async (req, res, next) => {
         data: testOrder
       });
     } catch (error) {
+      console.error('Error adding test result:', error);
       next(error);
     }
   },
+  
+  
   
   updateTestResult: async (req, res, next) => {
     try {
@@ -391,42 +429,125 @@ getReorderRequests: async (req, res, next) => {
   },
 
   // In labController.js
-collectSample: async (req, res, next) => {
-  try {
-    console.log('Request body:', req.body); // Add this for debugging
+  collectSample: async (req, res, next) => {
+   try {
+     // Enhanced logging
+     console.log('Collect Sample Request Body:', JSON.stringify(req.body, null, 2));
 
-    const lab = await Lab.findOne();
-    if (!lab) {
-      throw new AppError('Lab not found', 404);
-    }
+     // Validate required fields
+     if (!req.body.patient) {
+       return res.status(400).json({
+         status: 'error',
+         message: 'Patient is required'
+       });
+     }
 
-    const newTestOrder = {
-      patient: req.body.patient,
-      testType: req.body.testType,
-      sampleDetails: {
-        collectedAt: req.body.collectionDate,
-        location: req.body.storageLocation,
-        notes: req.body.notes,
-        status: 'collected'
-      }
-    };
+     if (!req.body.testType) {
+       return res.status(400).json({
+         status: 'error',
+         message: 'Test type is required'
+       });
+     }
 
-    // Add to test orders
-    lab.testOrders.push(newTestOrder);
-    await lab.save();
+     const lab = await Lab.findOne();
+     if (!lab) {
+       return res.status(404).json({
+         status: 'error',
+         message: 'Lab not found'
+       });
+     }
 
-    console.log('Sample collected successfully:', newTestOrder); // Add this for debugging
+     // Log test orders for debugging
+     console.log('Lab Test Orders:', JSON.stringify(lab.testOrders, null, 2));
 
-    res.status(201).json({
-      status: 'success',
-      data: newTestOrder
-    });
-  } catch (error) {
-    console.error('Error in collectSample:', error); // Add this for debugging
-    next(error);
-  }
+     // More robust test order finding
+     const testOrder = lab.testOrders.find(order => {
+       // Defensive check to prevent toString() on undefined
+       if (!order.patient) {
+         console.log('Skipping order with undefined patient:', order);
+         return false;
+       }
+       return order.patient.toString() === req.body.patient &&
+              order.testType === req.body.testType;
+     });
+
+     // Log found test order
+     console.log('Matched Test Order:', testOrder);
+
+     if (testOrder) {
+       testOrder.status = 'sample_collected';
+       testOrder.sampleDetails = {
+         collectedAt: req.body.collectionDate,
+         location: req.body.storageLocation,
+         notes: req.body.notes
+       };
+     }
+
+     // Ensure samples collection exists
+     if (!lab.samples) {
+       lab.samples = [];
+     }
+
+     // Create new sample
+     const newSample = {
+       testOrderId: testOrder?._id,
+       patient: req.body.patient,
+       testType: req.body.testType,
+       collectionDate: req.body.collectionDate,
+       storageLocation: req.body.storageLocation,
+       notes: req.body.notes || '',
+       status: 'collected'
+     };
+
+     // Add sample to collection
+     lab.samples.push(newSample);
+
+     // Save with error handling
+     try {
+       await lab.save();
+     } catch (saveError) {
+       console.error('Error saving lab document:', saveError);
+       return res.status(500).json({
+         status: 'error',
+         message: 'Failed to save sample',
+         details: saveError.message
+       });
+     }
+
+     res.status(201).json({
+       status: 'success',
+       data: newSample
+     });
+   } catch (error) {
+     console.error('Critical Error in collectSample:', error);
+     next(error);
+   }
 },
   
+  updateSampleStatus: async (req, res, next) => {
+    try {
+      const lab = await Lab.findOne({ 'samples._id': req.params.id });
+      if (!lab) {
+        throw new AppError('Sample not found', 404);
+      }
+
+      const sample = lab.samples.id(req.params.id);
+      if (!sample) {
+        throw new AppError('Sample not found', 404);
+      }
+
+      sample.status = req.body.status;
+      await lab.save();
+
+      res.json({
+        status: 'success',
+        data: sample
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
 
 addInventoryItem: async (req, res, next) => {
   try {
