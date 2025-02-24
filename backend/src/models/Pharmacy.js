@@ -27,14 +27,22 @@ const pharmacySchema = new mongoose.Schema({
       enum: ['Pending', 'Completed', 'Cancelled']
     }
   }],
+  
   refillRequests: [{
     prescription: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Prescription'
+      ref: 'Prescription',
+      required: true
     },
     patient: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Patient'
+      ref: 'Patient',
+      required: true
+    },
+    pharmacyLocation: {
+      type: String,
+      enum: ['main', 'hospital', ''],
+      default: ''
     },
     requestDate: {
       type: Date,
