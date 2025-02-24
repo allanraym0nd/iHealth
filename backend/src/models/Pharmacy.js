@@ -26,6 +26,26 @@ const pharmacySchema = new mongoose.Schema({
       type: String,
       enum: ['Pending', 'Completed', 'Cancelled']
     }
+  }],
+  refillRequests: [{
+    prescription: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Prescription'
+    },
+    patient: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Patient'
+    },
+    requestDate: {
+      type: Date,
+      default: Date.now
+    },
+    status: {
+      type: String,
+      enum: ['Pending', 'Approved', 'Rejected'],
+      default: 'Pending'
+    },
+    notes: String
   }]
 }, { timestamps: true });
 
