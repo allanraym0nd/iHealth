@@ -6,16 +6,20 @@ const validate = require('../middleware/validate');
 const auth = require('../middleware/auth');
 
 // Inventory routes
-router.post('/inventory', auth, inventoryValidation, validate, pharmacyController.create);
+router.post('/inventory', auth, inventoryValidation, validate, pharmacyController.addInventoryItem);
 router.get('/inventory', auth, pharmacyController.getInventory);
-router.put('/inventory', auth, inventoryValidation, validate, pharmacyController.updateInventory);
+router.put('/inventory/:id', auth, inventoryValidation, validate, pharmacyController.updateInventoryItem);
+router.delete('/inventory/:id', auth, pharmacyController.deleteInventoryItem);
 
 // Prescription routes
 router.post('/prescriptions', auth, prescriptionValidation, validate, pharmacyController.createPrescription);
 router.get('/prescriptions', auth, pharmacyController.getPrescriptions);
+router.put('/prescriptions/:prescriptionId/process', auth, pharmacyController.processPrescription);
 
 // Refill request routes
 router.post('/refill-requests', auth, refillRequestValidation, validate, pharmacyController.handleRefillRequest);
 router.get('/refill-requests', auth, pharmacyController.getRefillRequests);
+
+router.post('/create', auth, pharmacyController.createProfile);
 
 module.exports = router;
