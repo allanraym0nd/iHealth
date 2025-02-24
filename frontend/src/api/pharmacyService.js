@@ -126,13 +126,13 @@ getDashboardStats: async () => {
     },
     // Process refill request
     processRefillRequest: async (requestId, data) => {
-        try {
-            const response = await api.put(`/pharmacy/refill-requests/${requestId}`, data);
-            return response.data;
-        } catch (error) {
-            console.error('Error processing refill request:', error);
-            throw error;
-        }
+      try {
+        const response = await api.put(`/pharmacy/refill-requests/${requestId}`, data);
+        return response.data;
+      } catch (error) {
+        console.error('Error processing refill request:', error);
+        throw error;
+      }
     }
 };
 
