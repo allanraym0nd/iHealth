@@ -50,6 +50,38 @@ const pharmacyController = {
     }
   },
 
+
+  createRefillRequest: async (req, res, next) => {
+    try {
+      const pharmacy = await Pharmacy.findOne();
+      
+      // Validate required fields
+      const { prescription, pharmacyLocation, notes } = req.body;
+  
+      // Create refill request
+      const newRefillRequest = {
+        prescription: prescription,
+        patient: req.user.id, // Assuming user ID is available from auth middleware
+        pharmacyLocation: pharmacyLocation || '',
+        notes: notes || '',
+        status: 'Pending',
+        requestDate: new Date()
+      };
+  
+      // Add to pharmacy's refill requests
+      pharmacy.refillRequests.push(newRefillRequest);
+      await pharmacy.save();
+  
+      res.status(201).json({
+        status: 'success',
+        message: 'Refill request created successfully',
+        data: newRefillRequest
+      });
+    } catch (error) {
+      console.error('Error creating refill request:', error);
+      next(error);
+    }
+  },
   // In pharmacyController.js
 getPrescriptions: async (req, res, next) => {
   try {
@@ -253,6 +285,34 @@ deleteInventoryItem: async (req, res, next) => {
     }
   },
 
+  processRefillRequest: async (req, res, next) => {
+    try {
+      const pharmacy = await Pharmacy.findOne();
+      
+      const refillRequestIndex = pharmacy.refillRequests.findIndex(
+        request => request._id.toString() === req.params.id
+      );
+  
+      if (refillRequestIndex === -1) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'Refill request not found'
+        });
+      }
+      // Update the status
+    pharmacy.refillRequests[refillRequestIndex].status = req.body.status;
+
+    await pharmacy.save();
+
+    res.json({
+      status: 'success',
+      data: pharmacy.refillRequests[refillRequestIndex]
+    });
+  } catch (error) {
+    next(error);
+  }
+},
+
   // Handle refill request
   getRefillRequests: async (req, res, next) => {
     try {
@@ -284,6 +344,26 @@ deleteInventoryItem: async (req, res, next) => {
         message: 'Failed to fetch refill requests',
         error: error.message
       });
+    }
+  },
+
+  getPatientRefillRequests: async (req, res, next) => {
+    try {
+      const pharmacy = await Pharmacy.findOne()
+        .populate({
+          path: 'refillRequests',
+          match: { patient: req.user.id },
+          populate: [
+            { path: 'prescription', populate: ['doctor', 'medications'] }
+          ]
+        });
+  
+      res.json({
+        status: 'success',
+        data: pharmacy.refillRequests || []
+      });
+    } catch (error) {
+      next(error);
     }
   },
   
