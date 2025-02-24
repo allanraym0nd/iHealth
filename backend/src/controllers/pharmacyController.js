@@ -1,7 +1,26 @@
 const Pharmacy = require('../models/Pharmacy');
 const { AppError } = require('../middleware/errorHandler');
-
+const Prescription = require('../models/Prescription');
 const pharmacyController = {
+
+  createProfile: async (req, res) => {
+    try {
+        const pharmacy = new Pharmacy({
+            userId: req.user.id,
+            name: req.body.name,
+            department: req.body.department,
+            position: req.body.position,
+            contact: {
+                email: req.body.contact.email,
+                phone: req.body.contact.phone
+            }
+        });
+        await pharmacy.save();
+        res.status(201).json(pharmacy);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+},
 
   create: async (req, res, next) => {
     try {
@@ -31,17 +50,64 @@ const pharmacyController = {
     }
   },
 
-  getPrescriptions: async (req, res, next) => {
-    try {
-      const pharmacy = await Pharmacy.findOne().populate('prescriptions');
-      res.json({
-        status: 'success',
-        data: pharmacy.prescriptions
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
+  // In pharmacyController.js
+getPrescriptions: async (req, res, next) => {
+  try {
+    // Fetch prescriptions that are active and ready for pharmacy processing
+    const prescriptions = await Prescription.find({ 
+      status: 'active' 
+    })
+    .populate('patient', 'name')
+    .populate('doctor', 'name')
+    .sort({ createdAt: -1 });
+
+    res.json({
+      status: 'success',
+      data: prescriptions
+    });
+  } catch (error) {
+    next(error);
+  }
+},
+
+// Add a method to process prescriptions
+processPrescription: async (req, res, next) => {
+  try {
+    const { prescriptionId } = req.params;
+    
+    // Update prescription status 
+    const prescription = await Prescription.findByIdAndUpdate(
+      prescriptionId,
+      { 
+        status: 'completed',
+        // You might want to add more processing details
+      },
+      { new: true }
+    );
+
+    // Create a transaction in the pharmacy
+    const pharmacy = await Pharmacy.findOne();
+    pharmacy.transactions.push({
+      patient: prescription.patient,
+      medications: prescription.medications.map(med => ({
+        name: med.name,
+        quantity: med.dosage, // You might need to adjust this logic
+        price: 0 // Add pricing logic if needed
+      })),
+      date: new Date(),
+      status: 'Completed'
+    });
+    await pharmacy.save();
+
+    res.json({
+      status: 'success',
+      message: 'Prescription processed successfully',
+      data: prescription
+    });
+  } catch (error) {
+    next(error);
+  }
+},
   
 
   // Get inventory
@@ -61,34 +127,83 @@ const pharmacyController = {
     }
   },
 
-  // Update inventory
-  updateInventory: async (req, res, next) => {
+  addInventoryItem: async (req, res, next) => {
     try {
-      const pharmacy = await Pharmacy.findOneAndUpdate(
-        {},
-        { $set: { inventoryItems: req.body }},
-        { new: true, runValidators: true }
-      );
-
-      // Check for low stock items
-      const lowStockItems = pharmacy.inventoryItems.filter(
-        item => item.quantity <= item.reorderLevel
-      );
-
-      res.json({
+      const pharmacy = await Pharmacy.findOne();
+      pharmacy.inventoryItems.push(req.body);
+      await pharmacy.save();
+  
+      res.status(201).json({
         status: 'success',
-        data: pharmacy.inventoryItems,
-        alerts: lowStockItems.length > 0 ? {
-          lowStock: lowStockItems.map(item => ({
-            medication: item.medication,
-            quantity: item.quantity
-          }))
-        } : null
+        data: pharmacy.inventoryItems[pharmacy.inventoryItems.length - 1]
       });
     } catch (error) {
       next(error);
     }
   },
+  // Update inventory
+  updateInventoryItem: async (req, res, next) => {
+    try {
+      const pharmacy = await Pharmacy.findOne();
+      const itemIndex = pharmacy.inventoryItems.findIndex(
+        item => item._id.toString() === req.params.id
+      );
+  
+      if (itemIndex === -1) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'Inventory item not found'
+        });
+      }
+  
+      pharmacy.inventoryItems[itemIndex] = {
+        ...pharmacy.inventoryItems[itemIndex],
+        ...req.body
+      };
+      await pharmacy.save();
+
+    res.json({
+      status: 'success',
+      data: pharmacy.inventoryItems[itemIndex]
+    });
+  } catch (error) {
+    next(error);
+  }
+},
+
+deleteInventoryItem: async (req, res, next) => {
+  try {
+    const pharmacy = await Pharmacy.findOne();
+    
+    // Find the index of the item to delete
+    const itemIndex = pharmacy.inventoryItems.findIndex(
+      item => item._id.toString() === req.params.id
+    );
+
+    // If item not found, return 404
+    if (itemIndex === -1) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Inventory item not found'
+      });
+    }
+
+    // Remove the item from the inventoryItems array
+    pharmacy.inventoryItems.splice(itemIndex, 1);
+
+    // Save the updated pharmacy document
+    await pharmacy.save();
+
+    res.json({
+      status: 'success',
+      message: 'Inventory item deleted successfully',
+      data: pharmacy.inventoryItems
+    });
+  } catch (error) {
+    console.error('Error deleting inventory item:', error);
+    next(error);
+  }
+},
 
   // Handle prescription
   handlePrescription: async (req, res, next) => {
@@ -139,55 +254,76 @@ const pharmacyController = {
   },
 
   // Handle refill request
-  handleRefillRequest: async (req, res, next) => {
-    try {
-      const pharmacy = await Pharmacy.findOne();
-      
-      // Validate prescription existence
-      const prescriptionExists = await pharmacy.prescriptions.id(req.body.prescription);
-      if (!prescriptionExists) {
-        throw new AppError('Prescription not found', 404);
-      }
-
-      // Check if refill is allowed
-      if (prescriptionExists.refillsRemaining <= 0) {
-        throw new AppError('No refills remaining for this prescription', 400);
-      }
-
-      pharmacy.refillRequests.push({
-        prescription: req.body.prescription,
-        patient: req.body.patient,
-        requestDate: new Date(),
-        status: 'Pending',
-        notes: req.body.notes
-      });
-
-      await pharmacy.save();
-
-      res.status(201).json({
-        status: 'success',
-        message: 'Refill request submitted successfully'
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  // Get refill requests
   getRefillRequests: async (req, res, next) => {
     try {
-      const pharmacy = await Pharmacy.findOne()
-        .populate('refillRequests.prescription')
-        .populate('refillRequests.patient');
-
+      // Find pharmacy or create if not exists
+      let pharmacy = await Pharmacy.findOne()
+        .populate({
+          path: 'refillRequests.prescription',
+          populate: [
+            { path: 'patient', select: 'name' },
+            { path: 'doctor', select: 'name' }
+          ]
+        })
+        .populate('refillRequests.patient', 'name');
+  
+      // If no pharmacy exists, create one
+      if (!pharmacy) {
+        pharmacy = new Pharmacy();
+        await pharmacy.save();
+      }
+  
       res.json({
         status: 'success',
-        data: pharmacy.refillRequests
+        data: pharmacy.refillRequests || []
       });
     } catch (error) {
-      next(error);
+      console.error('Detailed error in getRefillRequests:', error);
+      res.status(500).json({
+        status: 'error',
+        message: 'Failed to fetch refill requests',
+        error: error.message
+      });
+    }
+  },
+  
+  // Add a method to handle refill requests
+  handleRefillRequest: async (req, res, next) => {
+    try {
+      const { prescription, patient, notes } = req.body;
+  
+      // Find pharmacy or create if not exists
+      let pharmacy = await Pharmacy.findOne();
+      if (!pharmacy) {
+        pharmacy = new Pharmacy();
+      }
+  
+      // Add refill request
+      pharmacy.refillRequests.push({
+        prescription,
+        patient,
+        notes,
+        status: 'Pending'
+      });
+  
+      await pharmacy.save();
+  
+      res.status(201).json({
+        status: 'success',
+        message: 'Refill request created',
+        data: pharmacy.refillRequests[pharmacy.refillRequests.length - 1]
+      });
+    } catch (error) {
+      console.error('Error creating refill request:', error);
+      res.status(500).json({
+        status: 'error',
+        message: 'Failed to create refill request',
+        error: error.message
+      });
     }
   }
+  // Get refill requests
+  
 };
 
 module.exports = pharmacyController;
