@@ -11,7 +11,7 @@ import {
 import pharmacyService from '../api/pharmacyService';
 import PharmacyPrescriptions from './sections/PharmacyPrescriptions';
 import PharmacyInventory from './sections/PharmacyInventory';
-//import PharmacyRefills from './sections/PharmacyRefills';
+import PharmacyRefills from './sections/PharmacyRefills';
 
 const PharmacyDashboard = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -176,7 +176,7 @@ const PharmacyDashboard = () => {
       case 'inventory':
         return <PharmacyInventory />;
       case 'refills':
-        //return <PharmacyRefills />;
+        return <PharmacyRefills />;
       default:
         return renderDashboardContent();
     }
