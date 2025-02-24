@@ -120,10 +120,23 @@ const patientService = {
 
   requestRefill: async (prescriptionId, refillData) => {
     try {
-      const response = await api.post(`/patients/prescriptions/${prescriptionId}/refill`, refillData);
+      const response = await api.post('/pharmacy/refill-requests', {
+        prescription: prescriptionId,
+        ...refillData
+      });
       return response.data;
     } catch (error) {
       console.error('Error requesting refill:', error);
+      throw error;
+    }
+  },
+
+  getRefillRequests: async () => {
+    try {
+      const response = await api.get('/pharmacy/patient-refill-requests');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching refill requests:', error);
       throw error;
     }
   },
