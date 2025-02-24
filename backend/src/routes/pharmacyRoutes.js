@@ -17,8 +17,11 @@ router.get('/prescriptions', auth, pharmacyController.getPrescriptions);
 router.put('/prescriptions/:prescriptionId/process', auth, pharmacyController.processPrescription);
 
 // Refill request routes
+router.post('/refill-requests', auth, pharmacyController.createRefillRequest);
 router.post('/refill-requests', auth, refillRequestValidation, validate, pharmacyController.handleRefillRequest);
+router.put('/refill-requests/:id', auth, pharmacyController.processRefillRequest);
 router.get('/refill-requests', auth, pharmacyController.getRefillRequests);
+router.get('/patient-refill-requests', auth, pharmacyController.getPatientRefillRequests);
 
 router.post('/create', auth, pharmacyController.createProfile);
 
