@@ -1,104 +1,208 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Plus, Download, Printer, Eye, X } from 'lucide-react';
+import billingService from '../../api/billingService';
 
-// Invoice Details Modal Component
-const InvoiceModal = ({ isOpen, onClose, invoice }) => {
+// New Invoice Modal Component
+const CreateInvoiceModal = ({ isOpen, onClose, onCreateSuccess }) => {
+  const [patients, setPatients] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    patientId: '',
+    items: [{ service: '', description: '', amount: 0 }],
+    totalAmount: 0
+  });
+
+  // Fetch patients on modal open
+  useEffect(() => {
+    if (isOpen) {
+      const fetchPatients = async () => {
+        try {
+          const response = await fetch('/api/patients');
+          const data = await response.json();
+          setPatients(data);
+        } catch (error) {
+          console.error('Error fetching patients:', error);
+        }
+      };
+      
+      fetchPatients();
+    }
+  }, [isOpen]);
+
+  // Calculate total when items change
+  useEffect(() => {
+    const total = formData.items.reduce((sum, item) => sum + Number(item.amount), 0);
+    setFormData(prev => ({ ...prev, totalAmount: total }));
+  }, [formData.items]);
+
+  // Add new item field
+  const addItem = () => {
+    setFormData({
+      ...formData,
+      items: [...formData.items, { service: '', description: '', amount: 0 }]
+    });
+  };
+
+  // Remove item field
+  const removeItem = (index) => {
+    const newItems = [...formData.items];
+    newItems.splice(index, 1);
+    setFormData({
+      ...formData,
+      items: newItems
+    });
+  };
+
+  // Update item field
+  const updateItem = (index, field, value) => {
+    const newItems = [...formData.items];
+    newItems[index][field] = field === 'amount' ? Number(value) : value;
+    setFormData({
+      ...formData,
+      items: newItems
+    });
+  };
+
+  // Submit form
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      await billingService.createInvoice(formData.patientId, {
+        items: formData.items,
+        totalAmount: formData.totalAmount
+      });
+      
+      onCreateSuccess();
+      onClose();
+    } catch (error) {
+      console.error('Error creating invoice:', error);
+      alert('Failed to create invoice');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+      <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-bold">Invoice Details</h3>
+          <h3 className="text-xl font-bold">Create New Invoice</h3>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <X size={20} />
           </button>
         </div>
 
-        <div className="space-y-4">
-          {/* Invoice Header */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Invoice #</label>
-              <p className="mt-1">{invoice.invoiceNumber}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Date</label>
-              <p className="mt-1">{new Date(invoice.date).toLocaleDateString()}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Patient</label>
-              <p className="mt-1">{invoice.patientName}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Status</label>
-              <span className={`inline-block mt-1 px-2 py-1 text-sm rounded-full ${
-                invoice.status === 'paid' 
-                  ? 'bg-green-100 text-green-800'
-                  : invoice.status === 'overdue'
-                  ? 'bg-red-100 text-red-800'
-                  : 'bg-yellow-100 text-yellow-800'
-              }`}>
-                {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-              </span>
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Patient Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Patient</label>
+            <select 
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={formData.patientId}
+              onChange={(e) => setFormData({...formData, patientId: e.target.value})}
+              required
+            >
+              <option value="">Select Patient</option>
+              {patients.map(patient => (
+                <option key={patient._id} value={patient._id}>
+                  {patient.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Invoice Items */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Items</label>
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {invoice.items?.map((item, index) => (
-                  <tr key={index}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.description}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{item.quantity}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">${item.price.toFixed(2)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">${(item.quantity * item.price).toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot className="bg-gray-50">
-                <tr>
-                  <td colSpan="3" className="px-6 py-4 text-sm text-right font-medium">Total</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-bold">${invoice.totalAmount.toFixed(2)}</td>
-                </tr>
-              </tfoot>
-            </table>
+            <div className="flex justify-between items-center mb-2">
+              <h4 className="font-medium text-gray-700">Invoice Items</h4>
+              <button 
+                type="button"
+                onClick={addItem}
+                className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
+              >
+                <Plus size={16} className="mr-1" /> Add Item
+              </button>
+            </div>
+            
+            {formData.items.map((item, index) => (
+              <div key={index} className="bg-gray-50 p-4 rounded-lg mb-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Service</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={item.service}
+                      onChange={(e) => updateItem(index, 'service', e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={item.description}
+                      onChange={(e) => updateItem(index, 'description', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Amount ($)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={item.amount}
+                      onChange={(e) => updateItem(index, 'amount', e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                {formData.items.length > 1 && (
+                  <div className="mt-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() => removeItem(index)}
+                      className="text-red-600 hover:text-red-800 text-sm"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+            
+            <div className="bg-gray-100 p-3 rounded-lg mt-2">
+              <div className="flex justify-between items-center">
+                <span className="font-medium">Total Amount:</span>
+                <span className="font-bold">${formData.totalAmount.toFixed(2)}</span>
+              </div>
+            </div>
           </div>
 
-          {/* Notes */}
-          {invoice.notes && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Notes</label>
-              <p className="mt-1 text-gray-600">{invoice.notes}</p>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex justify-end space-x-2 pt-4">
+          {/* Submit Button */}
+          <div className="flex justify-end space-x-2 pt-4 border-t">
             <button
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-              onClick={() => window.print()}
-            >
-              Print Invoice
-            </button>
-            <button
+              type="button"
               onClick={onClose}
               className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
             >
-              Close
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className={`px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+            >
+              {loading ? 'Creating...' : 'Create Invoice'}
             </button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );
@@ -110,50 +214,41 @@ const BillingInvoices = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Sample data for now, would replace with API call
-  useEffect(() => {
-    // Simulating API call
-    setTimeout(() => {
-      setInvoices([
-        {
-          _id: '1',
-          invoiceNumber: 'INV-2024-001',
-          patientName: 'John Doe',
-          date: '2024-01-15',
-          dueDate: '2024-02-15',
-          totalAmount: 250.00,
-          status: 'pending',
-          items: [
-            { description: 'Consultation', quantity: 1, price: 150.00 },
-            { description: 'Blood Test', quantity: 1, price: 100.00 }
-          ],
-          notes: 'Payment due within 30 days'
-        },
-        {
-          _id: '2',
-          invoiceNumber: 'INV-2024-002',
-          patientName: 'Jane Smith',
-          date: '2024-01-10',
-          dueDate: '2024-02-10',
-          totalAmount: 135.00,
-          status: 'paid',
-          items: [
-            { description: 'Medication', quantity: 3, price: 45.00 }
-          ]
-        }
-      ]);
+  // Fetch invoices
+  const fetchInvoices = async () => {
+    try {
+      setIsLoading(true);
+      const response = await billingService.getInvoices();
+      const data = response.data || response;
+      setInvoices(data);
+    } catch (err) {
+      console.error('Error fetching invoices:', err);
+      setError('Failed to load invoices');
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
+  };
+
+  // Initial fetch
+  useEffect(() => {
+    fetchInvoices();
   }, []);
+
+  // Handle invoice creation success
+  const handleCreateSuccess = () => {
+    fetchInvoices(); // Refresh the invoices list
+    alert('Invoice created successfully!');
+  };
 
   // Filter invoices based on status and search term
   const filteredInvoices = invoices.filter(invoice => {
-    const matchesStatus = filterStatus === 'all' || invoice.status === filterStatus;
-    const matchesSearch = invoice.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || invoice.status.toLowerCase() === filterStatus.toLowerCase();
+    const matchesSearch = (invoice.patientName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (invoice._id || '').toString().includes(searchTerm);
     return matchesStatus && matchesSearch;
   });
 
@@ -165,7 +260,10 @@ const BillingInvoices = () => {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Invoices</h2>
-        <button className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+        <button 
+          onClick={() => setIsCreateModalOpen(true)}
+          className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+        >
           <Plus size={20} className="mr-2" />
           New Invoice
         </button>
@@ -195,64 +293,16 @@ const BillingInvoices = () => {
         </select>
       </div>
 
-      {/* Invoices List */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice #</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredInvoices.map((invoice) => (
-              <tr key={invoice._id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{invoice.invoiceNumber}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{invoice.patientName}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(invoice.date).toLocaleDateString()}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">${invoice.totalAmount.toFixed(2)}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    invoice.status === 'paid' 
-                      ? 'bg-green-100 text-green-800'
-                      : invoice.status === 'overdue'
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex justify-end space-x-2">
-                    <button 
-                      onClick={() => setSelectedInvoice(invoice)}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      <Eye size={18} />
-                    </button>
-                    <button className="text-gray-600 hover:text-gray-900">
-                      <Download size={18} />
-                    </button>
-                    <button className="text-gray-600 hover:text-gray-900">
-                      <Printer size={18} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* Invoices Table... (your existing code) */}
 
       {/* Invoice Details Modal */}
-      <InvoiceModal 
-        isOpen={selectedInvoice !== null}
-        onClose={() => setSelectedInvoice(null)}
-        invoice={selectedInvoice}
+      
+
+      {/* Create Invoice Modal */}
+      <CreateInvoiceModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreateSuccess={handleCreateSuccess}
       />
     </div>
   );
