@@ -2,6 +2,34 @@ const Billing = require('../models/Billing');
 const { AppError } = require('../middleware/errorHandler');
 
 const billingController = {
+
+  createProfile: async (req, res) => {
+    try {
+      // Check if user already has a profile
+      const existingProfile = await Billing.findOne({ userId: req.user.id });
+      if (existingProfile) {
+        return res.status(400).json({ message: 'Billing profile already exists for this user' });
+      }
+      
+      // Create new billing profile
+      const billing = new Billing({
+        userId: req.user.id,
+        name: req.body.name,
+        department: req.body.department,
+        position: req.body.position,
+        contact: {
+          email: req.body.contact.email,
+          phone: req.body.contact.phone
+        }
+      });
+      
+      await billing.save();
+      res.status(201).json(billing);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  },
+
   // Create invoice
   createInvoice: async (req, res, next) => {
     try {
