@@ -8,4 +8,8 @@ router.post('/invoices/:patientId', auth, invoiceValidation, validate, billingCo
 router.put('/invoices/:invoiceId/payment', auth, paymentValidation, validate, billingController.processPayment);
 router.post('/insurance-claims/:patientId', auth, insuranceClaimValidation, validate, billingController.submitInsuranceClaim);
 
+
+router.post('/create', auth, billingController.createProfile);
+
+
 module.exports = router;
