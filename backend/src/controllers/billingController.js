@@ -72,6 +72,71 @@ const billingController = {
     }
   },
 
+  // Get all invoices
+
+// Get all invoices
+getInvoices: async (req, res, next) => {
+  try {
+    const billings = await Billing.find()
+      .populate('patient', 'name');
+    
+    // Extract and format invoices
+    const invoices = [];
+    billings.forEach(billing => {
+      if (billing.invoices && billing.invoices.length > 0) {
+        billing.invoices.forEach(invoice => {
+          invoices.push({
+            _id: invoice._id,
+            patientName: billing.patient ? billing.patient.name : 'Unknown',
+            date: invoice.createdAt || new Date(),
+            dueDate: invoice.dueDate,
+            totalAmount: invoice.totalAmount,
+            status: invoice.status,
+            items: invoice.items,
+            paymentMethod: invoice.paymentMethod
+          });
+        });
+      }
+    });
+    
+    res.status(200).json(invoices);
+  } catch (error) {
+    next(error);
+  }
+},
+
+// Get payments
+getPayments: async (req, res, next) => {
+  try {
+    const billings = await Billing.find()
+      .populate('patient', 'name');
+    
+    // Extract paid invoices as payments
+    const payments = [];
+    billings.forEach(billing => {
+      if (billing.invoices && billing.invoices.length > 0) {
+        billing.invoices
+          .filter(invoice => invoice.status === 'Paid' && invoice.paidDate)
+          .forEach(invoice => {
+            payments.push({
+              _id: invoice._id,
+              patientName: billing.patient ? billing.patient.name : 'Unknown',
+              date: invoice.paidDate,
+              amount: invoice.totalAmount,
+              method: invoice.paymentMethod || 'Unknown',
+              status: 'completed',
+              invoiceId: invoice._id
+            });
+          });
+      }
+    });
+    
+    res.status(200).json(payments);
+  } catch (error) {
+    next(error);
+  }
+},
+
   // Process payment
   processPayment: async (req, res, next) => {
     try {
