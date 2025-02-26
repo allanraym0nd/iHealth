@@ -33,36 +33,26 @@ const billingController = {
   // Create invoice
   createInvoice: async (req, res, next) => {
     try {
-      const billing = await Billing.findOne({ patient: req.params.patientId });
-      
-      if (!billing) {
-        // If no billing record exists for patient, create one
-        const newBilling = new Billing({
-          patient: req.params.patientId,
-          invoices: []
-        });
-        await newBilling.save();
-      }
-
+      const billing = await Billing.findOne({ patient: req.params.patientId }) || 
+        new Billing({ patient: req.params.patientId, invoices: [] });
+  
+      // Calculate total amount from items
+      const calculatedTotalAmount = req.body.items.reduce((sum, item) => sum + item.amount, 0);
+  
       const invoice = {
         items: req.body.items,
-        totalAmount: req.body.items.reduce((sum, item) => sum + item.amount, 0),
+        totalAmount: calculatedTotalAmount,
         status: 'Pending',
-        dueDate: new Date(Date.now() + 30*24*60*60*1000), // 30 days from now
+        dueDate: new Date(Date.now() + 30*24*60*60*1000),
         createdAt: new Date()
       };
-
-      // Validate total amount matches sum of items
-      if (invoice.totalAmount !== req.body.totalAmount) {
-        throw new AppError('Total amount does not match sum of items', 400);
-      }
-
+  
       const updatedBilling = await Billing.findOneAndUpdate(
         { patient: req.params.patientId },
         { $push: { invoices: invoice }},
-        { new: true }
+        { new: true, upsert: true }
       );
-
+  
       res.status(201).json({
         status: 'success',
         data: updatedBilling.invoices[updatedBilling.invoices.length - 1]
@@ -176,6 +166,18 @@ getPayments: async (req, res, next) => {
     }
   },
 
+  getAllPatients: async (req, res, next) => {
+    try {
+      const Patient = require('../models/Patient'); // Import the Patient model
+      const patients = await Patient.find().select('name _id');
+      res.status(200).json({
+        status: 'success',
+        data: patients
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
   // Get patient invoices
   getPatientInvoices: async (req, res, next) => {
     try {
