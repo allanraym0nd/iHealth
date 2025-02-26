@@ -25,4 +25,6 @@ router.get('/payments', auth, billingController.getPayments);
 // Report routes
 router.get('/reports', auth, billingController.getFinancialReports);
 
+router.get('/patients/all', auth, billingController.getAllPatients);
+
 module.exports = router;
