@@ -228,8 +228,39 @@ useEffect(() => {
 
 // Invoice Modal Component (Added to fix the error)
 const InvoiceModal = ({ isOpen, onClose, invoice }) => {
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('Credit Card');
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+
   if (!isOpen || !invoice) return null;
 
+  const handleProcessPayment = async () => {
+    try {
+      setProcessingPayment(true);
+      
+      // Call API to process payment
+      await billingService.processPayment(invoice._id, { 
+        paymentMethod: paymentMethod,
+        totalAmount: invoice.totalAmount
+      });
+      
+      // Show success message
+      setPaymentSuccess(true);
+      
+      // Close modal after delay and refresh
+      setTimeout(() => {
+        onClose();
+        window.location.reload(); // Refresh to get updated data
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      alert(error.response?.data?.message || 'Failed to process payment. Please try again.');
+    } finally {
+      setProcessingPayment(false);
+    }
+  };
+  
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -298,6 +329,37 @@ const InvoiceModal = ({ isOpen, onClose, invoice }) => {
             </table>
           </div>
 
+          {/* Payment Processing Section - only for pending invoices */}
+          {invoice.status.toLowerCase() === 'pending' && (
+            <div className="mt-4 border-t pt-4">
+              <h4 className="text-lg font-semibold mb-2">Process Payment</h4>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                  <select 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                  >
+                    <option value="Credit Card">Credit Card</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Insurance">Insurance</option>
+                  </select>
+                </div>
+                <button
+                  onClick={handleProcessPayment}
+                  disabled={processingPayment}
+                  className={`w-full px-4 py-2 bg-blue-500 text-white rounded-lg ${
+                    processingPayment ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'
+                  }`}
+                >
+                  {processingPayment ? 'Processing...' : 'Process Payment'}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex justify-end space-x-2 pt-4 border-t">
             <button
@@ -318,6 +380,7 @@ const InvoiceModal = ({ isOpen, onClose, invoice }) => {
     </div>
   );
 };
+
 
 // Main Component
 const BillingInvoices = () => {
