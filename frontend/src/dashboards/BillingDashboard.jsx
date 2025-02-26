@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DollarSign, FileText, CreditCard, BarChart2, LogOut } from 'lucide-react';
 import billingService from '../api/billingService';
 import BillingInvoices from './sections/BillingInvoices';
-//import BillingPayments from './sections/BillingPayments';
+import BillingPayments from './sections/BillingPayments';
 //import BillingReports from './sections/BillingReports';
 
 const BillingDashboard = () => {
@@ -174,7 +174,7 @@ const BillingDashboard = () => {
       case 'invoices':
         return <BillingInvoices />;
       case 'payments':
-       // return <BillingPayments />;
+        return <BillingPayments />;
       case 'reports':
        // return <BillingReports />;
       default:
