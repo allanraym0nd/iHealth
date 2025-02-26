@@ -13,6 +13,17 @@ const billingService = {
     }
   },
 
+  // Add to billingService.js
+  getAllPatients: async () => {
+    try {
+      const response = await api.get('/billing/patients/all');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching all patients:', error);
+      throw error;
+    }
+  },
+
   // Profile management
   createProfile: async (profileData) => {
     try {
