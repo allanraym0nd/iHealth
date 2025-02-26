@@ -130,42 +130,56 @@ getPayments: async (req, res, next) => {
   // Process payment
   processPayment: async (req, res, next) => {
     try {
-      const billing = await Billing.findOne({
-        "invoices._id": req.params.invoiceId
-      });
-
+      const { invoiceId } = req.params;
+      const { paymentMethod, amount } = req.body;
+  
+      // Find the billing record with this invoice
+      const billing = await Billing.findOne({ 'invoices._id': invoiceId });
+  
       if (!billing) {
-        throw new AppError('Invoice not found', 404);
+        return res.status(404).json({ message: 'Invoice not found' });
       }
-
-      const invoice = billing.invoices.id(req.params.invoiceId);
-      
-      if (invoice.status === 'Paid') {
-        throw new AppError('Invoice already paid', 400);
-      }
-
-      // Update invoice status
-      const updatedBilling = await Billing.findOneAndUpdate(
-        { "invoices._id": req.params.invoiceId },
-        { 
-          $set: { 
-            "invoices.$.status": "Paid",
-            "invoices.$.paidDate": new Date(),
-            "invoices.$.paymentMethod": req.body.paymentMethod
-          }
-        },
-        { new: true }
+  
+      // Find the specific invoice
+      const invoiceIndex = billing.invoices.findIndex(
+        inv => inv._id.toString() === invoiceId
       );
-
-      res.json({
-        status: 'success',
-        data: updatedBilling.invoices.id(req.params.invoiceId)
+  
+      if (invoiceIndex === -1) {
+        return res.status(404).json({ message: 'Invoice not found' });
+      }
+  
+      // Validate that payment amount matches invoice total
+      if (amount !== billing.invoices[invoiceIndex].totalAmount) {
+        return res.status(400).json({ 
+          message: 'Payment amount must match the invoice total',
+          expectedAmount: billing.invoices[invoiceIndex].totalAmount,
+          providedAmount: amount
+        });
+      }
+  
+      // Update invoice status and payment details
+      billing.invoices[invoiceIndex].status = 'Paid';
+      billing.invoices[invoiceIndex].paymentMethod = paymentMethod;
+      billing.invoices[invoiceIndex].paidDate = new Date();
+  
+      // Save the updated billing document
+      await billing.save();
+  
+      res.status(200).json({
+        message: 'Payment processed successfully',
+        invoice: billing.invoices[invoiceIndex]
       });
     } catch (error) {
-      next(error);
+      console.error('Payment processing error:', error);
+      res.status(500).json({ 
+        message: 'Failed to process payment', 
+        error: error.message 
+      });
     }
   },
-
+  
+      
   getAllPatients: async (req, res, next) => {
     try {
       const Patient = require('../models/Patient'); // Import the Patient model
