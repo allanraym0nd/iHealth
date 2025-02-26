@@ -69,10 +69,16 @@ const billingService = {
   // Payment processing
   processPayment: async (invoiceId, paymentData) => {
     try {
-      const response = await api.put(`/billing/invoices/${invoiceId}/payment`, paymentData);
+      console.log('Processing payment for invoiceId:', invoiceId);
+      console.log('Payment data:', paymentData);
+      
+      const response = await api.put(`/billing/invoices/${invoiceId}/payment`, {
+        paymentMethod: paymentData.paymentMethod,
+        amount: paymentData.totalAmount
+      });
       return response.data;
     } catch (error) {
-      console.error('Error processing payment:', error);
+      console.error('Detailed payment error:', error.response?.data || error.message);
       throw error;
     }
   },
