@@ -3,7 +3,9 @@ import { DollarSign, FileText, CreditCard, BarChart2, LogOut } from 'lucide-reac
 import billingService from '../api/billingService';
 import BillingInvoices from './sections/BillingInvoices';
 import BillingPayments from './sections/BillingPayments';
-//import BillingReports from './sections/BillingReports';
+import BillingReports from './sections/BillingReports';
+import InsuranceClaims from './sections/InsuranceClaims';
+
 
 const BillingDashboard = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -60,6 +62,11 @@ const BillingDashboard = () => {
       section: 'reports',
       icon: BarChart2,
       label: 'Reports'
+    },
+    {
+      section: 'insurance-claims',
+      icon: FileText,
+      label: 'Insurance Claims'
     }
   ];
 
@@ -176,7 +183,9 @@ const BillingDashboard = () => {
       case 'payments':
         return <BillingPayments />;
       case 'reports':
-       // return <BillingReports />;
+       return <BillingReports />;
+       case 'insurance-claims':
+      return <InsuranceClaims />;
       default:
         return renderDashboardContent();
     }
