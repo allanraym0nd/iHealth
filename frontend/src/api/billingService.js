@@ -105,15 +105,26 @@ const billingService = {
   },
 
   // Insurance claims
-  submitInsuranceClaim: async (patientId, claimData) => {
-    try {
-      const response = await api.post(`/billing/insurance-claims/${patientId}`, claimData);
-      return response.data;
-    } catch (error) {
-      console.error('Error submitting insurance claim:', error);
-      throw error;
-    }
-  },
+  // In billingService.js
+getInsuranceClaims: async () => {
+  try {
+    const response = await api.get('/billing/insurance-claims');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching insurance claims:', error);
+    throw error;
+  }
+},
+
+submitInsuranceClaim: async (claimData) => {
+  try {
+    const response = await api.post('/billing/insurance-claims', claimData);
+    return response.data;
+  } catch (error) {
+    console.error('Error submitting insurance claim:', error);
+    throw error;
+  }
+},
 
   // Financial reports
   getFinancialReports: async () => {
