@@ -1,6 +1,10 @@
 const router = require('express').Router();
 const billingController = require('../controllers/billingController');
-const { invoiceValidation, paymentValidation, insuranceClaimValidation } = require('../middleware/billingValidation');
+const { 
+  invoiceValidation, 
+  paymentValidation, 
+  insuranceClaimValidation 
+} = require('../middleware/billingValidation');
 const validate = require('../middleware/validate');
 const auth = require('../middleware/auth');
 
@@ -14,7 +18,9 @@ router.get('/invoices/:patientId', auth, billingController.getPatientInvoices);
 router.put('/invoices/:invoiceId/payment', auth, paymentValidation, validate, billingController.processPayment);
 
 // Insurance claim routes
-router.post('/insurance-claims/:patientId', auth, insuranceClaimValidation, validate, billingController.submitInsuranceClaim);
+router.post('/insurance-claims', auth, insuranceClaimValidation, validate, billingController.submitInsuranceClaim);
+router.get('/insurance-claims', auth, billingController.getInsuranceClaims);
+router.get('/insurance-claims/:patientId', auth, billingController.getPatientInsuranceClaims);
 
 // Expense routes
 router.post('/expenses', auth, billingController.trackExpenses);
@@ -25,6 +31,7 @@ router.get('/payments', auth, billingController.getPayments);
 // Report routes
 router.get('/reports', auth, billingController.getFinancialReports);
 
+// Patient routes
 router.get('/patients/all', auth, billingController.getAllPatients);
 
 module.exports = router;
