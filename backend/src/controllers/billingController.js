@@ -235,57 +235,149 @@ getPayments: async (req, res, next) => {
   },
 
   // Submit insurance claim
-  submitInsuranceClaim: async (req, res, next) => {
-    try {
-      const billing = await Billing.findOne({ patient: req.params.patientId });
-      
-      if (!billing) {
-        throw new AppError('No billing records found for this patient', 404);
-      }
+  // In billingController.js
+// Get all insurance claims
+getInsuranceClaims: async (req, res, next) => {
+  try {
+    const billings = await Billing.find().populate('patient', 'name');
+    
+    // Flatten insurance claims from all billing records
+    const insuranceClaims = billings.flatMap(billing => 
+      billing.insuranceClaims.map(claim => ({
+        ...claim.toObject(),
+        patientName: billing.patient ? billing.patient.name : 'Unknown Patient',
+        patientId: billing.patient ? billing.patient._id : null
+      }))
+    );
+    
+    res.status(200).json(insuranceClaims);
+  } catch (error) {
+    next(error);
+  }
+},
 
-      billing.insuranceClaims.push({
-        provider: req.body.provider,
-        claimNumber: req.body.claimNumber,
-        amount: req.body.amount,
-        submissionDate: new Date(),
-        status: 'Pending'
-      });
-
-      await billing.save();
-
-      res.status(201).json({
-        status: 'success',
-        data: billing.insuranceClaims[billing.insuranceClaims.length - 1]
-      });
-    } catch (error) {
-      next(error);
+// Get insurance claims for a specific patient
+getPatientInsuranceClaims: async (req, res, next) => {
+  try {
+    const { patientId } = req.params;
+    
+    const billing = await Billing.findOne({ patient: patientId });
+    
+    if (!billing) {
+      return res.status(404).json({ message: 'No billing records found for this patient' });
     }
-  },
+    
+    const insuranceClaims = billing.insuranceClaims.map(claim => ({
+      ...claim.toObject(),
+      patientName: billing.patient ? billing.patient.name : 'Unknown Patient'
+    }));
+    
+    res.status(200).json(insuranceClaims);
+  } catch (error) {
+    next(error);
+  }
+},
+
+// Submit insurance claim
+submitInsuranceClaim: async (req, res, next) => {
+  try {
+    const { patientId, provider, claimNumber, amount, notes } = req.body;
+
+    // Find the billing record for the patient
+    let billing = await Billing.findOne({ patient: patientId });
+
+    // If no billing record exists, create one
+    if (!billing) {
+      billing = new Billing({ patient: patientId });
+    }
+
+    // Add new insurance claim
+    const newClaim = {
+      provider,
+      claimNumber,
+      amount,
+      notes,
+      status: 'Submitted',
+      submissionDate: new Date()
+    };
+
+    billing.insuranceClaims.push(newClaim);
+    await billing.save();
+
+    // Return the newly created claim
+    res.status(201).json({
+      status: 'success',
+      data: newClaim
+    });
+  } catch (error) {
+    next(error);
+  }
+},
 
   // Get financial reports
   getFinancialReports: async (req, res, next) => {
     try {
-      const billing = await Billing.findOne();
-      
-      const totalIncome = billing.invoices
-        .filter(invoice => invoice.status === 'Paid')
-        .reduce((sum, invoice) => sum + invoice.totalAmount, 0);
-
-      const totalExpenses = billing.expenses
+      const billings = await Billing.find();
+  
+      // Calculate total income (from paid invoices)
+      const paidInvoices = billings.flatMap(b => 
+        b.invoices.filter(inv => inv.status === 'Paid')
+      );
+      const totalIncome = paidInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+  
+      // Calculate expenses
+      const totalExpenses = billings.flatMap(b => b.expenses)
         .reduce((sum, expense) => sum + expense.amount, 0);
-
-      const pendingPayments = billing.invoices
-        .filter(invoice => invoice.status === 'Pending')
-        .reduce((sum, invoice) => sum + invoice.totalAmount, 0);
-
-      res.json({
-        status: 'success',
-        data: {
-          totalIncome,
-          totalExpenses,
-          netProfit: totalIncome - totalExpenses,
-          pendingPayments
+  
+      // Calculate payment methods breakdown
+      const paymentMethodBreakdown = paidInvoices.reduce((methods, invoice) => {
+        if (invoice.paymentMethod) {
+          if (!methods[invoice.paymentMethod]) {
+            methods[invoice.paymentMethod] = {
+              total: 0,
+              count: 0
+            };
+          }
+          methods[invoice.paymentMethod].total += invoice.totalAmount;
+          methods[invoice.paymentMethod].count++;
         }
+        return methods;
+      }, {});
+  
+      // Convert payment method breakdown to formatted array
+      const totalPayments = Object.values(paymentMethodBreakdown)
+        .reduce((sum, method) => sum + method.total, 0);
+  
+      const paymentMethods = Object.entries(paymentMethodBreakdown).map(([name, data]) => ({
+        name,
+        total: data.total,
+        percentage: totalPayments > 0 
+          ? Number(((data.total / totalPayments) * 100).toFixed(2)) 
+          : 0
+      }));
+  
+      // Invoice status breakdown
+      const invoiceStats = billings.reduce((stats, billing) => {
+        billing.invoices.forEach(inv => {
+          switch(inv.status) {
+            case 'Pending': stats.pendingInvoices++; break;
+            case 'Paid': stats.paidInvoices++; break;
+            case 'Overdue': stats.overdueInvoices++; break;
+          }
+        });
+        return stats;
+      }, { pendingInvoices: 0, paidInvoices: 0, overdueInvoices: 0 });
+  
+      res.status(200).json({
+        totalIncome,
+        totalExpenses,
+        netProfit: totalIncome - totalExpenses,
+        profitMargin: totalIncome > 0 
+          ? Number(((totalIncome - totalExpenses) / totalIncome * 100).toFixed(2)) 
+          : 0,
+        ...invoiceStats,
+        totalInvoices: invoiceStats.pendingInvoices + invoiceStats.paidInvoices + invoiceStats.overdueInvoices,
+        paymentMethods
       });
     } catch (error) {
       next(error);
