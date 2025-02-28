@@ -17,13 +17,13 @@ const billingService = {
   getAllPatients: async () => {
     try {
       const response = await api.get('/billing/patients/all');
+      console.log('Patients fetched:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error fetching all patients:', error);
+      console.error('Error fetching patients:', error);
       throw error;
     }
   },
-
   // Profile management
   createProfile: async (profileData) => {
     try {
@@ -118,14 +118,17 @@ getInsuranceClaims: async () => {
 
 submitInsuranceClaim: async (claimData) => {
   try {
+    console.log('Submitting insurance claim:', claimData);
+    
     const response = await api.post('/billing/insurance-claims', claimData);
     return response.data;
   } catch (error) {
-    console.error('Error submitting insurance claim:', error);
+    console.error('Detailed submission error:', 
+      error.response?.data || error.message
+    );
     throw error;
   }
 },
-
   // Financial reports
   getFinancialReports: async () => {
     try {
