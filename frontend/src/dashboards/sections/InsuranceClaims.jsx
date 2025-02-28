@@ -94,20 +94,56 @@ const InsuranceClaimModal = ({ isOpen, onClose, claim }) => {
 // New Insurance Claim Modal
 const NewClaimModal = ({ isOpen, onClose, onSubmit, patients }) => {
   const [claimData, setClaimData] = useState({
-    patientId: '',
+    patient: '', // Change to patient name for direct selection
     provider: '',
     claimNumber: '',
     amount: '',
     notes: ''
   });
 
+  const [errors, setErrors] = useState({});
+
+  // Validate form before submission
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!claimData.patient) newErrors.patient = 'Patient is required';
+    if (!claimData.provider) newErrors.provider = 'Insurance Provider is required';
+    if (!claimData.claimNumber) newErrors.claimNumber = 'Claim Number is required';
+    if (!claimData.amount || parseFloat(claimData.amount) <= 0) 
+      newErrors.amount = 'Valid Claim Amount is required';
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit({
-      ...claimData,
-      amount: parseFloat(claimData.amount)
-    });
+  
+    if (validateForm()) {
+      onSubmit({
+        patient: claimData.patient, // Pass patient name
+        provider: claimData.provider,
+        claimNumber: claimData.claimNumber,
+        amount: claimData.amount,
+        notes: claimData.notes
+      });
+    }
   };
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setClaimData({
+        patient: '',
+        provider: '',
+        claimNumber: '',
+        amount: '',
+        notes: ''
+      });
+      setErrors({});
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -122,25 +158,43 @@ const NewClaimModal = ({ isOpen, onClose, onSubmit, patients }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Patient Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Patient
             </label>
             <select
-              value={claimData.patientId}
-              onChange={(e) => setClaimData({...claimData, patientId: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              value={claimData.patient}
+              onChange={(e) => {
+                setClaimData({...claimData, patient: e.target.value});
+                if (errors.patient) {
+                  setErrors(prev => {
+                    const newErrors = {...prev};
+                    delete newErrors.patient;
+                    return newErrors;
+                  });
+                }
+              }}
+              className={`w-full px-3 py-2 border ${
+                errors.patient 
+                  ? 'border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 focus:ring-blue-500'
+              } rounded-md`}
               required
             >
               <option value="">Select Patient</option>
               {patients.map(patient => (
-                <option key={patient._id} value={patient._id}>
+                <option key={patient._id} value={patient.name}>
                   {patient.name}
                 </option>
               ))}
             </select>
+            {errors.patient && (
+              <p className="text-red-500 text-xs mt-1">{errors.patient}</p>
+            )}
           </div>
 
+          {/* Insurance Provider */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Insurance Provider
@@ -148,12 +202,29 @@ const NewClaimModal = ({ isOpen, onClose, onSubmit, patients }) => {
             <input
               type="text"
               value={claimData.provider}
-              onChange={(e) => setClaimData({...claimData, provider: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              onChange={(e) => {
+                setClaimData({...claimData, provider: e.target.value});
+                if (errors.provider) {
+                  setErrors(prev => {
+                    const newErrors = {...prev};
+                    delete newErrors.provider;
+                    return newErrors;
+                  });
+                }
+              }}
+              className={`w-full px-3 py-2 border ${
+                errors.provider 
+                  ? 'border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 focus:ring-blue-500'
+              } rounded-md`}
               required
             />
+            {errors.provider && (
+              <p className="text-red-500 text-xs mt-1">{errors.provider}</p>
+            )}
           </div>
 
+          {/* Claim Number */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Claim Number
@@ -161,12 +232,29 @@ const NewClaimModal = ({ isOpen, onClose, onSubmit, patients }) => {
             <input
               type="text"
               value={claimData.claimNumber}
-              onChange={(e) => setClaimData({...claimData, claimNumber: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              onChange={(e) => {
+                setClaimData({...claimData, claimNumber: e.target.value});
+                if (errors.claimNumber) {
+                  setErrors(prev => {
+                    const newErrors = {...prev};
+                    delete newErrors.claimNumber;
+                    return newErrors;
+                  });
+                }
+              }}
+              className={`w-full px-3 py-2 border ${
+                errors.claimNumber 
+                  ? 'border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 focus:ring-blue-500'
+              } rounded-md`}
               required
             />
+            {errors.claimNumber && (
+              <p className="text-red-500 text-xs mt-1">{errors.claimNumber}</p>
+            )}
           </div>
 
+          {/* Claim Amount */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Claim Amount
@@ -175,12 +263,29 @@ const NewClaimModal = ({ isOpen, onClose, onSubmit, patients }) => {
               type="number"
               step="0.01"
               value={claimData.amount}
-              onChange={(e) => setClaimData({...claimData, amount: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              onChange={(e) => {
+                setClaimData({...claimData, amount: e.target.value});
+                if (errors.amount) {
+                  setErrors(prev => {
+                    const newErrors = {...prev};
+                    delete newErrors.amount;
+                    return newErrors;
+                  });
+                }
+              }}
+              className={`w-full px-3 py-2 border ${
+                errors.amount 
+                  ? 'border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 focus:ring-blue-500'
+              } rounded-md`}
               required
             />
+            {errors.amount && (
+              <p className="text-red-500 text-xs mt-1">{errors.amount}</p>
+            )}
           </div>
 
+          {/* Notes (Optional) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Notes (Optional)
@@ -193,6 +298,7 @@ const NewClaimModal = ({ isOpen, onClose, onSubmit, patients }) => {
             />
           </div>
 
+          {/* Action Buttons */}
           <div className="flex justify-end space-x-2 pt-4 border-t">
             <button
               type="button"
@@ -238,10 +344,11 @@ const InsuranceClaims = () => {
         const claimsData = claimsResponse.data || claimsResponse;
         setClaims(claimsData);
         setFilteredClaims(claimsData);
-
-        // Fetch patients (you might need to adjust this based on your patient service)
+  
+        // Fetch patients
         const patientsResponse = await billingService.getAllPatients();
-        setPatients(patientsResponse.data || patientsResponse);
+        console.log('Fetched patients:', patientsResponse.data);
+        setPatients(patientsResponse.data || []);
       } catch (err) {
         console.error('Error fetching data:', err);
         setError('Failed to load insurance claims and patients');
@@ -249,10 +356,9 @@ const InsuranceClaims = () => {
         setIsLoading(false);
       }
     };
-
+  
     fetchData();
   }, []);
-
   // Filter claims when search or filter changes
   useEffect(() => {
     let result = claims;
@@ -278,9 +384,38 @@ const InsuranceClaims = () => {
   // Submit new claim
   const handleSubmitClaim = async (claimData) => {
     try {
-      const response = await billingService.submitInsuranceClaim(claimData);
-      setClaims([...claims, response.data]);
-      setFilteredClaims([...claims, response.data]);
+      console.log('Full claim data:', claimData);
+      console.log('Available patients:', patients);
+  
+      // Find patient by exact name match
+      const patient = patients.find(p => 
+        p.name.toLowerCase() === claimData.patient.toLowerCase()
+      );
+  
+      if (!patient) {
+        console.error('Patient not found:', claimData.patient);
+        alert('Patient not found. Please select a patient from the list.');
+        return;
+      }
+  
+      // Prepare submission data
+      const submissionData = {
+        patientId: patient._id,
+        provider: claimData.provider,
+        claimNumber: claimData.claimNumber,
+        amount: parseFloat(claimData.amount),
+        notes: claimData.notes
+      };
+  
+      console.log('Submission data:', submissionData);
+  
+      const response = await billingService.submitInsuranceClaim(submissionData);
+      
+      // Update claims list
+      setClaims(prevClaims => [...prevClaims, response.data]);
+      setFilteredClaims(prevClaims => [...prevClaims, response.data]);
+      
+      // Close modal
       setIsNewClaimModalOpen(false);
     } catch (err) {
       console.error('Error submitting insurance claim:', err);
