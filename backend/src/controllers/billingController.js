@@ -281,7 +281,16 @@ getPatientInsuranceClaims: async (req, res, next) => {
 // Submit insurance claim
 submitInsuranceClaim: async (req, res, next) => {
   try {
+    console.log('Backend received claim data:', req.body);
+    
     const { patientId, provider, claimNumber, amount, notes } = req.body;
+
+    // Validate required fields
+    if (!patientId) {
+      return res.status(400).json({ 
+        message: 'Patient ID is required' 
+      });
+    }
 
     // Find the billing record for the patient
     let billing = await Billing.findOne({ patient: patientId });
@@ -304,16 +313,15 @@ submitInsuranceClaim: async (req, res, next) => {
     billing.insuranceClaims.push(newClaim);
     await billing.save();
 
-    // Return the newly created claim
     res.status(201).json({
       status: 'success',
       data: newClaim
     });
   } catch (error) {
+    console.error('Full error in claim submission:', error);
     next(error);
   }
 },
-
   // Get financial reports
   getFinancialReports: async (req, res, next) => {
     try {
