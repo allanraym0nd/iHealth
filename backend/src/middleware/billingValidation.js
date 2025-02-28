@@ -49,11 +49,6 @@ const billingValidation = {
 
   // Insurance claim validation
   insuranceClaimValidation: [
-    // Validate patient ID
-    param('patientId')
-      .notEmpty().withMessage('Patient ID is required')
-      .isMongoId().withMessage('Invalid patient ID'),
-
     // Validate insurance provider
     check('provider')
       .notEmpty().withMessage('Insurance provider is required')
@@ -71,10 +66,21 @@ const billingValidation = {
       .notEmpty().withMessage('Claim amount is required')
       .isFloat({ min: 0 }).withMessage('Claim amount must be a positive number'),
 
-    // Validate submission date
+    // Validate patient ID
+    check('patientId')
+      .notEmpty().withMessage('Patient ID is required')
+      .isMongoId().withMessage('Invalid patient ID'),
+
+    // Make submission date optional
     check('submissionDate')
-      .notEmpty().withMessage('Submission date is required')
-      .isISO8601().withMessage('Invalid date format')
+      .optional()
+      .isISO8601().withMessage('Invalid date format'),
+
+    // Optional notes
+    check('notes')
+      .optional()
+      .isString().withMessage('Notes must be a string')
+      .trim()
   ],
 
   // Expense tracking validation
