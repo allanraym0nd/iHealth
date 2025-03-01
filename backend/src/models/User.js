@@ -12,7 +12,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['doctor', 'nurse', 'patient', 'pharmacy', 'lab', 'billing'],
+    enum: ['doctor', 'nurse', 'patient', 'pharmacy', 'lab', 'billing', 'reception'], 
     required: true
   }
 }, { timestamps: true });
