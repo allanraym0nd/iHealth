@@ -5,7 +5,7 @@ import BillingInvoices from './sections/BillingInvoices';
 import BillingPayments from './sections/BillingPayments';
 import BillingReports from './sections/BillingReports';
 import InsuranceClaims from './sections/InsuranceClaims';
-
+import ExpenseTracking from './sections/ExpenseTracking';
 
 const BillingDashboard = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -67,6 +67,11 @@ const BillingDashboard = () => {
       section: 'insurance-claims',
       icon: FileText,
       label: 'Insurance Claims'
+    },
+    {
+      section: 'expenses',
+      icon: DollarSign,
+      label: 'Expenses'
     }
   ];
 
@@ -186,6 +191,8 @@ const BillingDashboard = () => {
        return <BillingReports />;
        case 'insurance-claims':
       return <InsuranceClaims />;
+      case 'expenses':
+      return <ExpenseTracking />;
       default:
         return renderDashboardContent();
     }
