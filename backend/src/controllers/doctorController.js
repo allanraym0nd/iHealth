@@ -5,6 +5,7 @@ const { AppError } = require('../middleware/errorHandler');
 const Appointment = require('../models/Appointment');
 const User = require('../models/User');
 const Prescription = require('../models/Prescription');
+const Lab = require('../models/Lab');
 
 
 
@@ -432,6 +433,138 @@ createPrescription: async (req, res, next) => {
     res.status(201).json({
       status: 'success',
       data: prescription
+    });
+  } catch (error) {
+    next(error);
+  }
+},
+
+// Add to doctorController.js
+createLabOrder: async (req, res, next) => {
+  try {
+    const doctor = await Doctor.findOne({ userId: req.user.id });
+    if (!doctor) {
+      throw new AppError('Doctor not found', 404);
+    }
+
+    // Check if patient exists
+    const patient = await Patient.findById(req.body.patientId);
+    if (!patient) {
+      throw new AppError('Patient not found', 404);
+    }
+
+    // Get the lab record (assuming there's a single lab record for the system)
+    let lab = await Lab.findOne();
+    if (!lab) {
+      lab = new Lab(); // Create a new lab record if none exists
+    }
+
+    // Create the new test order
+    const newTestOrder = {
+      patient: req.body.patientId,
+      doctor: doctor._id,
+      testType: req.body.testType,
+      status: 'Pending',
+      scheduledDate: req.body.scheduledDate || new Date(),
+      notes: req.body.notes,
+      priority: req.body.priority || 'routine'
+    };
+
+    // Add the test order to the lab's testOrders array
+    lab.testOrders.push(newTestOrder);
+    await lab.save();
+
+    // Get the newly created test order
+    const testOrder = lab.testOrders[lab.testOrders.length - 1];
+
+    res.status(201).json({
+      status: 'success',
+      data: testOrder
+    });
+  } catch (error) {
+    next(error);
+  }
+},
+
+getLabOrders: async (req, res, next) => {
+  try {
+    const doctor = await Doctor.findOne({ userId: req.user.id });
+    if (!doctor) {
+      throw new AppError('Doctor not found', 404);
+    }
+
+    // Find lab record
+    const lab = await Lab.findOne();
+    if (!lab) {
+      return res.json({
+        status: 'success',
+        data: []
+      });
+    }
+
+    // Add a safety check for testOrders
+    if (!lab.testOrders || !Array.isArray(lab.testOrders)) {
+      return res.json({
+        status: 'success',
+        data: []
+      });
+    }
+
+    // Filter test orders for this doctor, with proper null/undefined checking
+    const doctorOrders = lab.testOrders.filter(order => {
+      return order.doctor && doctor._id && 
+             order.doctor.toString() === doctor._id.toString();
+    });
+
+    // Populate patient data for each order
+    const populatedOrders = await Promise.all(
+      doctorOrders.map(async order => {
+        if (!order.patient) {
+          return {
+            ...order.toObject(),
+            patient: { name: 'Unknown Patient' }
+          };
+        }
+        
+        const patient = await Patient.findById(order.patient);
+        return {
+          ...order.toObject(),
+          patient: patient || { name: 'Unknown Patient' }
+        };
+      })
+    );
+
+    res.json({
+      status: 'success',
+      data: populatedOrders
+    });
+  } catch (error) {
+    next(error);
+  }
+},
+
+cancelLabOrder: async (req, res, next) => {
+  try {
+    const lab = await Lab.findOne({ 'testOrders._id': req.params.id });
+    if (!lab) {
+      throw new AppError('Lab order not found', 404);
+    }
+
+    // Find the test order and update its status
+    const testOrderIndex = lab.testOrders.findIndex(
+      order => order._id.toString() === req.params.id
+    );
+
+    if (testOrderIndex === -1) {
+      throw new AppError('Lab order not found', 404);
+    }
+
+    lab.testOrders[testOrderIndex].status = 'Cancelled';
+    await lab.save();
+
+    res.json({
+      status: 'success',
+      data: lab.testOrders[testOrderIndex]
     });
   } catch (error) {
     next(error);
