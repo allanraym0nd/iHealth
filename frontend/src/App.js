@@ -6,6 +6,7 @@ import PatientDashboard from './dashboards/PatientDashboard';  // Add this impor
 import LabDashboard from './dashboards/LabDashboard.jsx';
 import PharmacyDashboard from './dashboards/PharmacyDashboard.jsx';
 import BillingDashboard from './dashboards/BillingDashboard.jsx';
+import ReceptionDashboard from './dashboards/ReceptionDashboard.jsx';
 
 import './App.css';
 
@@ -19,6 +20,7 @@ function App() {
         <Route path="/lab-dashboard" element={<LabDashboard/>} />
         <Route path="/nurses" element={<div>Nurses Dashboard</div>} />
         <Route path="/pharmacy-dashboard" element={<PharmacyDashboard/>} />
+        <Route path="/reception-dashboard" element={<ReceptionDashboard/>} />
         <Route path="/lab" element={<div>Lab Dashboard</div>} />
         <Route path="/billing-dashboard" element={<BillingDashboard />} />
         <Route path="/" element={<Navigate to="/login" />} />
