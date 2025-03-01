@@ -211,32 +211,9 @@ getPayments: async (req, res, next) => {
     }
   },
 
-  // Track expenses
-  trackExpenses: async (req, res, next) => {
-    try {
-      const billing = await Billing.findOneAndUpdate(
-        {},
-        { $push: { expenses: {
-          category: req.body.category,
-          amount: req.body.amount,
-          date: new Date(),
-          description: req.body.description
-        }}},
-        { new: true }
-      );
 
-      res.json({
-        status: 'success',
-        data: billing.expenses[billing.expenses.length - 1]
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
 
   // Submit insurance claim
-  // In billingController.js
-// Get all insurance claims
 getInsuranceClaims: async (req, res, next) => {
   try {
     const billings = await Billing.find().populate('patient', 'name');
@@ -390,7 +367,63 @@ submitInsuranceClaim: async (req, res, next) => {
     } catch (error) {
       next(error);
     }
+  },
+
+  // Add these methods to billingController.js
+getExpenses: async (req, res, next) => {
+  try {
+    const billings = await Billing.find();
+    
+    // Flatten expenses from all billing records
+    const expenses = billings.flatMap(billing => 
+      billing.expenses.map(expense => ({
+        ...expense.toObject(),
+        _id: expense._id
+      }))
+    );
+    
+    res.status(200).json(expenses);
+  } catch (error) {
+    next(error);
   }
+},
+
+trackExpenses: async (req, res, next) => {
+  try {
+    const { category, amount, date, description } = req.body;
+    
+    // Find any billing record to attach the expense
+    let billing = await Billing.findOne();
+    
+    // If no billing records exist, return an error
+    if (!billing) {
+      return res.status(404).json({ 
+        message: 'No billing profile found to attach expense' 
+      });
+    }
+    
+    // Add new expense
+    const newExpense = {
+      category,
+      amount,
+      date: date || new Date(),
+      description
+    };
+    
+    billing.expenses.push(newExpense);
+    await billing.save();
+    
+    // Return the newly created expense
+    res.status(201).json({
+      status: 'success',
+      data: newExpense
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+
 };
 
 module.exports = billingController;
