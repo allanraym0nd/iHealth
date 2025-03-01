@@ -1,5 +1,5 @@
 const User = require('../models/User');
-const Patient = require('../models/Patient'); // Add this import
+const Patient = require('../models/Patient');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { AppError } = require('../middleware/errorHandler');
@@ -17,10 +17,23 @@ const register = async (req, res, next) => {
       email 
     } = req.body;
     
+    // Validate role
+    const validRoles = ['doctor', 'nurse', 'patient', 'pharmacy', 'lab', 'billing', 'reception'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid role',
+        validRoles: validRoles
+      });
+    }
+    
     // Check if user exists
     const existingUser = await User.findOne({ username });
     if (existingUser) {
-      throw new AppError('Username already exists', 400);
+      return res.status(400).json({
+        status: 'error',
+        message: 'Username already exists'
+      });
     }
 
     // Hash password
@@ -66,26 +79,42 @@ const register = async (req, res, next) => {
       role: user.role
     });
   } catch (error) {
-    next(error); // Pass error to error handler
+    console.error('Registration error:', error);
+    
+    // Handle specific mongoose validation errors
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Validation failed',
+        errors: Object.values(error.errors).map(err => err.message)
+      });
+    }
+
+    // Generic error handler
+    next(error);
   }
 };
 
 const login = async (req, res, next) => {
   try {
     const { username, password } = req.body;
-   // console.log("Username:", username);
-    // console.log("Password:", password);
 
     // Check if user exists
     const user = await User.findOne({ username });
     if (!user) {
-      return res.status(401).json({ message: 'Invalid username or password' });
+      return res.status(401).json({ 
+        status: 'error',
+        message: 'Invalid username or password' 
+      });
     }
 
     // Check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid username or password' });
+      return res.status(401).json({ 
+        status: 'error',
+        message: 'Invalid username or password' 
+      });
     }
 
     // Generate token
@@ -97,12 +126,16 @@ const login = async (req, res, next) => {
 
     // Send response with flattened structure
     res.json({
+      status: 'success',
       token,
       role: user.role
     });
   } catch (error) {
-   // console.error('Login error:', error);
-    res.status(500).json({ message: 'Login failed. Please try again.' });
+    console.error('Login error:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Login failed. Please try again.' 
+    });
   }
 };
 
