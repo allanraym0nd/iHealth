@@ -15,7 +15,7 @@ const registerValidation = [
   // Role validation
   check('role')
     .notEmpty().withMessage('Role is required')
-    .isIn(['doctor', 'nurse', 'patient', 'pharmacy', 'lab', 'billing'])
+    .isIn(['doctor', 'nurse', 'patient', 'pharmacy', 'lab', 'billing','reception'])
     .withMessage('Invalid role'),
 
   // Patient specific validations - only required if role is patient
