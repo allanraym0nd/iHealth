@@ -23,8 +23,8 @@ router.get('/insurance-claims', auth, billingController.getInsuranceClaims);
 router.get('/insurance-claims/:patientId', auth, billingController.getPatientInsuranceClaims);
 
 // Expense routes
+router.get('/expenses', auth, billingController.getExpenses);
 router.post('/expenses', auth, billingController.trackExpenses);
-
 // Payment routes
 router.get('/payments', auth, billingController.getPayments);
 
