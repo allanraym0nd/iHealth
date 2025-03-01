@@ -5,6 +5,7 @@ import {
   Calendar, 
   FileText, 
   Pill,
+  TestTube,
   MessageSquare 
 } from 'lucide-react';
 import doctorService from '../api/doctorService';
@@ -13,6 +14,7 @@ import AppointmentScheduling from './sections/AppointmentScheduling';
 import MedicalRecords from './sections/MedicalRecords';
 import Communication from './sections/Communication';
 import Prescriptions from './sections/Prescriptions';
+import LabOrders from './sections/LabOrders';
 
 const DoctorDashboard = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -77,10 +79,16 @@ const DoctorDashboard = () => {
       label: 'Prescriptions'
     },
     {
+      section: 'lab-orders',
+      icon: TestTube,
+      label: 'Lab Orders'
+    },
+    {
       section: 'communication',
       icon: MessageSquare,
       label: 'Communication'
     }
+    
   ];
 
   // Render dashboard content based on active section
@@ -96,6 +104,8 @@ const DoctorDashboard = () => {
         return <MedicalRecords />;
         case 'prescriptions':  // Add this case
       return <Prescriptions />;
+      case 'lab-orders':  // Add this case
+      return <LabOrders />;
         case 'communication':
   return <Communication />;
       default:
