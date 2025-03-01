@@ -93,19 +93,11 @@ const billingService = {
     }
   },
 
-  // Expense tracking
-  trackExpense: async (expenseData) => {
-    try {
-      const response = await api.post('/billing/expenses', expenseData);
-      return response.data;
-    } catch (error) {
-      console.error('Error tracking expense:', error);
-      throw error;
-    }
-  },
+  
+
 
   // Insurance claims
-  // In billingService.js
+
 getInsuranceClaims: async () => {
   try {
     const response = await api.get('/billing/insurance-claims');
@@ -138,7 +130,28 @@ submitInsuranceClaim: async (claimData) => {
       console.error('Error getting financial reports:', error);
       throw error;
     }
+  },
+
+  // Add these methods to billingService.js
+getExpenses: async () => {
+  try {
+    const response = await api.get('/billing/expenses');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching expenses:', error);
+    throw error;
   }
+},
+
+trackExpense: async (expenseData) => {
+  try {
+    const response = await api.post('/billing/expenses', expenseData);
+    return response.data;
+  } catch (error) {
+    console.error('Error tracking expense:', error);
+    throw error;
+  }
+}
 };
 
 export default billingService;
