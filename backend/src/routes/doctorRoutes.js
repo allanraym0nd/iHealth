@@ -28,6 +28,11 @@ router.get('/medical-records/:id', auth, medicalRecordController.getById);
 router.get('/prescriptions', auth, doctorController.getPrescriptions);
 router.post('/prescriptions', auth, doctorController.createPrescription);
 
+// Lab order routes
+router.post('/lab-orders', auth, doctorController.createLabOrder);
+router.get('/lab-orders', auth, doctorController.getLabOrders);
+router.put('/lab-orders/:id/cancel', auth, doctorController.cancelLabOrder);
+
 // General CRUD routes
 router.post('/', auth, doctorValidation, validate, doctorController.create);
 router.get('/', auth, doctorController.getAll);
