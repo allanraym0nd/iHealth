@@ -197,7 +197,38 @@ getUsers: async () => {
       console.error('Error creating prescription:', error);
       throw error;
     }
+  },
+
+  // Add to doctorService.js
+createLabOrder: async (labOrderData) => {
+  try {
+    const response = await api.post('/doctors/lab-orders', labOrderData);
+    return response.data;
+  } catch (error) {
+    console.error('Error creating lab order:', error);
+    throw error;
   }
+},
+
+getLabOrders: async () => {
+  try {
+    const response = await api.get('/doctors/lab-orders');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching lab orders:', error);
+    throw error;
+  }
+},
+
+cancelLabOrder: async (labOrderId) => {
+  try {
+    const response = await api.put(`/doctors/lab-orders/${labOrderId}/cancel`);
+    return response.data;
+  } catch (error) {
+    console.error('Error cancelling lab order:', error);
+    throw error;
+  }
+}
 };
 
 export default doctorService;
