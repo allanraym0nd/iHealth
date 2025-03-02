@@ -2,6 +2,7 @@
 const Patient = require('../models/Patient');
 const Appointment = require('../models/Appointment');
 const { AppError } = require('../middleware/errorHandler');
+const Doctor = require('../models/Doctor');
 
 const receptionController = {
   // Get all patients
@@ -107,46 +108,80 @@ const receptionController = {
     }
   },
 
-  // Get dashboard statistics
-  getDashboardStats: async (req, res, next) => {
+  // Get dashboard statistic
+ getDashboardStats: async (req, res, next) => {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      const todayAppointmentsCount = await Appointment.countDocuments({
-        date: {
-          $gte: today,
-          $lt: tomorrow
-        }
-      });
+      // Patient Statistics
+      const [
+        newPatientsToday, 
+        totalPatients, 
+        patientDemographics, 
+        todayAppointments,
+        activeDoctors
+      ] = await Promise.all([
+        Patient.countDocuments({
+          createdAt: {
+            $gte: today,
+            $lt: tomorrow
+          }
+        }),
+        Patient.countDocuments(),
+        Patient.aggregate([
+          {
+            $group: {
+              _id: '$gender',
+              count: { $sum: 1 }
+            }
+          }
+        ]),
+        Appointment.find({
+          date: {
+            $gte: today,
+            $lt: tomorrow
+          }
+        })
+        .populate('patient', 'name')
+        .populate('doctor', 'name')
+        .sort({ date: 1 }),
+        Doctor.countDocuments({
+          status: 'active'
+        })
+      ]);
 
-      const newPatientsToday = await Patient.countDocuments({
-        createdAt: {
-          $gte: today,
-          $lt: tomorrow
-        }
-      });
-
-      const waitingPatients = await Appointment.find({
-        date: {
-          $gte: today,
-          $lt: tomorrow
-        },
-        status: 'Waiting'
-      }).countDocuments();
+      const appointmentStats = {
+        total: todayAppointments.length,
+        scheduled: todayAppointments.filter(apt => apt.status === 'scheduled').length,
+        completed: todayAppointments.filter(apt => apt.status === 'completed').length,
+        cancelled: todayAppointments.filter(apt => apt.status === 'cancelled').length
+      };
 
       res.json({
         status: 'success',
         data: {
-          todayAppointments: todayAppointmentsCount,
-          newPatients: newPatientsToday,
-          waitingPatients
+          patients: {
+            newToday: newPatientsToday,
+            total: totalPatients,
+            demographics: patientDemographics
+          },
+          appointments: {
+            total: appointmentStats.total,
+            scheduled: appointmentStats.scheduled,
+            completed: appointmentStats.completed,
+            cancelled: appointmentStats.cancelled,
+            details: todayAppointments
+          },
+          facility: {
+            activeDoctors
+          }
         }
       });
     } catch (error) {
-      next(new AppError('Failed to fetch dashboard stats', 500));
+      next(new AppError('Failed to fetch dashboard statistics', 500));
     }
   }
 };
