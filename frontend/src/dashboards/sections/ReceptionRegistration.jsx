@@ -92,8 +92,41 @@ const EnhancedPatientModal = ({ isOpen, onClose, onSubmit }) => {
     }
   };
 
-  const nextStep = () => setStep(step + 1);
-  const prevStep = () => setStep(step - 1);
+  // In the EnhancedPatientModal component
+const nextStep = (e) => {
+  // Prevent any form submission
+  e.preventDefault(); 
+  e.stopPropagation();
+  // Just change the step
+  setStep(step + 1);
+};
+
+const prevStep = (e) => {
+  // Prevent any form submission
+  e.preventDefault();
+  e.stopPropagation();
+  // Just change the step
+  setStep(step - 1);
+};
+
+// In the JSX for step navigation buttons
+{step < 4 ? (
+  <button
+    type="button" // Important: ensure this is type="button" not "submit"
+    onClick={nextStep}
+    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+  >
+    Next
+  </button>
+) : (
+  <button
+    type="submit" // Only this button should be type="submit"
+    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+  >
+    Register Patient
+  </button>
+)};
+  
 
   if (!isOpen) return null;
 
@@ -486,16 +519,41 @@ const PatientRegistration = () => {
     }
   };
 
-  const handleRegisterPatient = async (patientData) => {
-    try {
-      await receptionService.registerPatient(patientData);
-      fetchPatients(); // Refresh the list
-      return true;
-    } catch (error) {
-      console.error('Error registering patient:', error);
-      return false;
-    }
-  };
+  // In handleRegisterPatient
+const handleRegisterPatient = async (patientData) => {
+  try {
+    // Log the exact data before submission
+    console.log('SUBMITTING PATIENT DATA:', JSON.stringify(patientData, null, 2));
+    
+    // Create the formatted data
+    const formattedData = {
+      name: patientData.name,
+      age: parseInt(patientData.age),
+      gender: patientData.gender,
+      dateOfBirth: patientData.dateOfBirth,
+      contact: patientData.contact,
+      emergencyContact: patientData.emergencyContact,
+      insurance: patientData.insurance,
+      medicalHistory: {
+        allergies: patientData.allergies || 'None',
+        medications: patientData.medications || 'None',
+        conditions: patientData.medicalConditions || 'None'
+      },
+      status: patientData.status || 'active'
+    };
+    
+    console.log('FORMATTED DATA:', JSON.stringify(formattedData, null, 2));
+    console.log('GENDER VALUE:', formattedData.gender);
+    
+    const response = await receptionService.registerPatient(formattedData);
+    fetchPatients();
+    return true;
+  } catch (error) {
+    console.error('Registration error:', error);
+    alert('Failed to register patient');
+    return false;
+  }
+};
 
   if (loading) return <div className="p-4">Loading patients...</div>;
   if (error) return <div className="p-4 text-red-500">{error}</div>;

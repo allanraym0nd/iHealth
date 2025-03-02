@@ -3,6 +3,9 @@ const Patient = require('../models/Patient');
 const Appointment = require('../models/Appointment');
 const { AppError } = require('../middleware/errorHandler');
 const Doctor = require('../models/Doctor');
+const User = require('../models/User');
+const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose');
 
 const receptionController = {
   // Get all patients
@@ -49,39 +52,68 @@ const receptionController = {
   },
 
   // Register a new patient
-  registerPatient: async (req, res, next) => {
-    try {
-      const { 
-        name, 
-        age, 
-        gender, 
-        contact,
-        emergencyContact,
-        medicalHistory
-      } = req.body;
+// Modified registerPatient function without transactions
+registerPatient: async (req, res, next) => {
+  try {
+    const { 
+      name, 
+      age, 
+      gender,
+      dateOfBirth,
+      contact,
+      emergencyContact,
+      medicalHistory,
+      insurance,
+      status
+    } = req.body;
 
-      const newPatient = new Patient({
-        name,
-        age,
-        gender,
-        contact,
-        emergencyContact,
-        medicalHistory,
-        status: 'active'
-      });
+    console.log('Processing patient registration:', req.body);
 
-      await newPatient.save();
+    // Generate a default password
+    const defaultPassword = Math.random().toString(36).slice(-8);
 
-      res.status(201).json({
-        status: 'success',
-        message: 'Patient registered successfully',
-        data: newPatient
-      });
-    } catch (error) {
-      next(new AppError('Failed to register patient', 500));
-    }
-  },
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
+    // Create User with patient's email
+    const user = new User({
+      username: contact.email, // Use the email from contact
+      password: hashedPassword,
+      role: 'patient'
+    });
+
+    const savedUser = await user.save();
+
+    // Create Patient with user reference
+    const newPatient = new Patient({
+      userId: savedUser._id,
+      name,
+      age,
+      gender,
+      dateOfBirth,
+      contact,
+      emergencyContact,
+      medicalHistory,
+      insurance,
+      status: status || 'active'
+    });
+
+    const savedPatient = await newPatient.save();
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Patient registered successfully',
+      data: {
+        patient: savedPatient,
+        username: savedUser.username,
+        tempPassword: defaultPassword // Only for development
+      }
+    });
+  } catch (error) {
+    console.error('Patient registration error:', error);
+    return next(new AppError(`Failed to register patient: ${error.message}`, 500));
+  }
+},
   // Update patient information
   updatePatient: async (req, res, next) => {
     try {
