@@ -39,6 +39,6 @@ const patientSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Appointment'
   }]
-});
+}, { timestamps: true }); // Add this option here
 
 module.exports = mongoose.model('Patient', patientSchema);
