@@ -40,7 +40,7 @@ const medicalRecordRoute = require('./routes/medicalRecordRoute');
 const messageRoutes = require('./routes/messageRoutes');
 const userRoutes = require('./routes/userRoutes');
 const prescriptionRoutes = require('./routes/prescriptionRoutes'); 
-
+const receptionRoutes = require('./routes/receptionRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/patients', patientRoutes);
@@ -53,6 +53,7 @@ app.use('/api/medical-records', medicalRecordRoute);
 app.use('/api/messages', messageRoutes);
 app.use('/api', userRoutes);
 app.use('/api/prescriptions', prescriptionRoutes);
+app.use('/api/reception', receptionRoutes);
 // Database connection with better logging
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
