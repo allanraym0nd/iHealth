@@ -17,4 +17,16 @@ router.post('/appointments', auth, receptionController.createAppointment);
 router.get('/available-doctors', auth, receptionController.getAvailableDoctors);
 router.put('/appointments/:id/status', auth, receptionController.updateAppointmentStatus);
 
+// In receptionRoutes.js
+router.get('/appointments/:appointmentId/waiting-time', auth, receptionController.calculateWaitingTime);
+
+// In receptionRoutes.js
+router.get('/analytics/appointments', auth, receptionController.getAppointmentAnalytics);
+
+
+
+router.get('/queue', auth, receptionController.getCurrentQueue);
+router.put('/appointments/:id/queue-status', auth, receptionController.updateQueueStatus);
+router.post('/queue/reorder', auth, receptionController.reorderQueue);
+
 module.exports = router;
