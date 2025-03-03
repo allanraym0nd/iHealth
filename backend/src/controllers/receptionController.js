@@ -215,7 +215,100 @@ registerPatient: async (req, res, next) => {
     } catch (error) {
       next(new AppError('Failed to fetch dashboard statistics', 500));
     }
+  },
+
+  // Create appointment from reception
+createAppointment: async (req, res, next) => {
+  try {
+    const { patientId, doctorId, date, time, type, notes, priority } = req.body;
+
+    // Validate patient and doctor exist
+    const patient = await Patient.findById(patientId);
+    const doctor = await Doctor.findById(doctorId);
+
+    if (!patient) {
+      return next(new AppError('Patient not found', 404));
+    }
+
+    if (!doctor) {
+      return next(new AppError('Doctor not found', 404));
+    }
+
+    // Create new appointment
+    const newAppointment = new Appointment({
+      patient: patientId,
+      doctor: doctorId,
+      date,
+      time,
+      type,
+      notes,
+      createdBy: 'reception',
+      priority: priority || 'routine',
+      status: 'scheduled'
+    });
+
+    await newAppointment.save();
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Appointment created successfully',
+      data: newAppointment
+    });
+  } catch (error) {
+    next(new AppError('Failed to create appointment', 500));
   }
+},
+
+// Get available doctors for appointment scheduling
+getAvailableDoctors: async (req, res, next) => {
+  try {
+    const { date, time } = req.query;
+
+    // Find doctors without conflicting appointments
+    const conflictingAppointments = await Appointment.find({
+      date,
+      time,
+      status: { $nin: ['cancelled'] }
+    });
+
+    const availableDoctors = await Doctor.find({
+      _id: { $nin: conflictingAppointments.map(apt => apt.doctor) }
+    }).select('name specialization');
+
+    res.json({
+      status: 'success',
+      data: availableDoctors
+    });
+  } catch (error) {
+    next(new AppError('Failed to fetch available doctors', 500));
+  }
+},
+
+// Update appointment status (for queue management)
+updateAppointmentStatus: async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const appointment = await Appointment.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    ).populate('patient', 'name').populate('doctor', 'name');
+
+    if (!appointment) {
+      return next(new AppError('Appointment not found', 404));
+    }
+
+    res.json({
+      status: 'success',
+      message: 'Appointment status updated',
+      data: appointment
+    });
+  } catch (error) {
+    next(new AppError('Failed to update appointment status', 500));
+  }
+}
 };
 
 module.exports = receptionController;
