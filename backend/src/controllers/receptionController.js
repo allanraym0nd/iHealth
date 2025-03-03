@@ -308,7 +308,251 @@ updateAppointmentStatus: async (req, res, next) => {
   } catch (error) {
     next(new AppError('Failed to update appointment status', 500));
   }
+},
+
+// Get current appointment queue
+getCurrentQueue: async (req, res, next) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Get all appointments for today that are scheduled, waiting, or in-progress
+    const queuedAppointments = await Appointment.find({
+      date: {
+        $gte: today,
+        $lt: tomorrow
+      },
+      status: { $in: ['scheduled', 'waiting', 'in-progress'] }
+    })
+    .populate('patient', 'name age gender contact')
+    .populate('doctor', 'name specialization')
+    .sort({ priority: -1, time: 1 });
+
+    res.json({
+      status: 'success',
+      data: queuedAppointments
+    });
+  } catch (error) {
+    next(new AppError('Failed to fetch appointment queue', 500));
+  }
+},
+
+// Update appointment status
+updateQueueStatus: async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, queuePosition } = req.body;
+
+    // Validate the status
+    const validStatuses = ['scheduled', 'waiting', 'in-progress', 'completed', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return next(new AppError('Invalid status', 400));
+    }
+
+    // Update the appointment
+    const appointment = await Appointment.findByIdAndUpdate(
+      id,
+      { 
+        status,
+        ...(queuePosition !== undefined && { queuePosition })
+      },
+      { new: true }
+    )
+    .populate('patient', 'name age gender contact')
+    .populate('doctor', 'name specialization');
+
+    if (!appointment) {
+      return next(new AppError('Appointment not found', 404));
+    }
+
+    res.json({
+      status: 'success',
+      message: 'Appointment updated successfully',
+      data: appointment
+    });
+  } catch (error) {
+    next(new AppError('Failed to update appointment', 500));
+  }
+},
+
+// Reorder queue positions
+reorderQueue: async (req, res, next) => {
+  try {
+    const { appointments } = req.body;
+    
+    if (!Array.isArray(appointments)) {
+      return next(new AppError('Invalid input format', 400));
+    }
+
+    // Update queue positions in a transaction
+    const updatedAppointments = [];
+    
+    for (const apt of appointments) {
+      const { id, queuePosition } = apt;
+      const updated = await Appointment.findByIdAndUpdate(
+        id,
+        { queuePosition },
+        { new: true }
+      )
+      .populate('patient', 'name')
+      .populate('doctor', 'name');
+      
+      if (updated) {
+        updatedAppointments.push(updated);
+      }
+    }
+
+    res.json({
+      status: 'success',
+      message: 'Queue reordered successfully',
+      data: updatedAppointments
+    });
+  } catch (error) {
+    next(new AppError('Failed to reorder queue', 500));
+  }
+},
+
+
+calculateWaitingTime: async (req, res, next) => {
+  try {
+    const { appointmentId } = req.params;
+    
+    // Get the appointment
+    const appointment = await Appointment.findById(appointmentId)
+      .populate('doctor')
+      .populate('patient');
+    
+    if (!appointment) {
+      return next(new AppError('Appointment not found', 404));
+    }
+    
+    // Get all waiting and in-progress appointments ahead of this one
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const aheadAppointments = await Appointment.find({
+      doctor: appointment.doctor._id,
+      date: {
+        $gte: today,
+        $lt: tomorrow
+      },
+      status: { $in: ['waiting', 'in-progress'] },
+      time: { $lt: appointment.time }
+    });
+    
+    // Calculate estimated waiting time
+    // Assuming average appointment duration is 15 minutes
+    const averageAppointmentDuration = 15; // minutes
+    const waitingTime = aheadAppointments.length * averageAppointmentDuration;
+    
+    // Calculate estimated start time
+    const now = new Date();
+    const estimatedStartTime = new Date(now.getTime() + waitingTime * 60000);
+    
+    res.json({
+      status: 'success',
+      data: {
+        estimatedWaitingTime: waitingTime,
+        estimatedStartTime: estimatedStartTime,
+        aheadInQueue: aheadAppointments.length
+      }
+    });
+  } catch (error) {
+    next(new AppError('Failed to calculate waiting time', 500));
+  }
+},
+
+// Add to receptionController.js
+
+// Get appointment analytics
+getAppointmentAnalytics: async (req, res, next) => {
+  try {
+    const { period } = req.query; // 'day', 'week', 'month'
+    
+    // Calculate date range based on period
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let startDate = new Date(today);
+    
+    if (period === 'week') {
+      startDate.setDate(today.getDate() - 7);
+    } else if (period === 'month') {
+      startDate.setMonth(today.getMonth() - 1);
+    } else {
+      // Default to day
+      startDate = today;
+    }
+    
+    const endDate = new Date(today);
+    endDate.setDate(today.getDate() + 1);
+    
+    // Get all appointments in the date range
+    const appointments = await Appointment.find({
+      date: { $gte: startDate, $lt: endDate }
+    }).populate('doctor', 'name specialization').populate('patient', 'name');
+    
+    // Calculate analytics
+    const totalAppointments = appointments.length;
+    const completedAppointments = appointments.filter(apt => apt.status === 'completed').length;
+    const cancelledAppointments = appointments.filter(apt => apt.status === 'cancelled').length;
+    
+    // Group by status
+    const statusCounts = appointments.reduce((acc, apt) => {
+      acc[apt.status] = (acc[apt.status] || 0) + 1;
+      return acc;
+    }, {});
+    
+    // Group by type
+    const typeCounts = appointments.reduce((acc, apt) => {
+      acc[apt.type] = (acc[apt.type] || 0) + 1;
+      return acc;
+    }, {});
+    
+    // Group by doctor
+    const doctorCounts = appointments.reduce((acc, apt) => {
+      const doctorName = apt.doctor ? apt.doctor.name : 'Unassigned';
+      acc[doctorName] = (acc[doctorName] || 0) + 1;
+      return acc;
+    }, {});
+    
+    // Calculate time distribution if there's actual duration data
+    let averageDuration = null;
+    const appointmentsWithDuration = appointments.filter(apt => apt.actualDuration);
+    if (appointmentsWithDuration.length > 0) {
+      averageDuration = appointmentsWithDuration.reduce((sum, apt) => sum + apt.actualDuration, 0) / 
+        appointmentsWithDuration.length;
+    }
+    
+    // Get patient data for the same period
+    const newPatients = await Patient.countDocuments({
+      createdAt: { $gte: startDate, $lt: endDate }
+    });
+    
+    res.json({
+      status: 'success',
+      data: {
+        period,
+        startDate,
+        endDate,
+        totalAppointments,
+        completedAppointments,
+        cancelledAppointments,
+        statusCounts,
+        typeCounts,
+        doctorCounts,
+        averageDuration,
+        newPatients
+      }
+    });
+  } catch (error) {
+    next(new AppError('Failed to get appointment analytics', 500));
+  }
 }
+
 };
 
 module.exports = receptionController;
