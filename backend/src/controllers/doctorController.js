@@ -94,42 +94,23 @@ const doctorController = {
     }
   },
   
-  
-      
+    
   getPatients: async (req, res, next) => {
     try {
-      console.log('User ID:', req.user.id);
-      
-      // Check if doctor exists
-      const doctorExists = await Doctor.findOne({ userId: req.user.id });
-      console.log('Doctor exists:', !!doctorExists);
-  
-      if (!doctorExists) {
-        console.log('No doctor found. Creating new doctor...');
-        const newDoctor = new Doctor({
-          userId: req.user.id,
-          name: 'Default Doctor',
-          specialization: 'General',
-          patients: []
-        });
-        await newDoctor.save();
-      }
-  
-      // Fetch doctor with populated patients
-      const doctor = await Doctor.findOne({ userId: req.user.id })
-        .populate('patients');
-      
-      console.log('Patients count:', doctor.patients.length);
+      // Fetch all patients, not just those associated with a specific doctor
+      const patients = await Patient.find()
+        .select('name age gender contact status')
+        .sort({ createdAt: -1});
       
       res.json({
         status: 'success',
-        data: doctor.patients
+        data: patients
       });
     } catch (error) {
       console.error('Error in getPatients:', error);
       next(error);
     }
-  }, 
+  },
   // Get doctor by ID
   getById: async (req, res, next) => {
     try {
