@@ -29,6 +29,7 @@ const appointmentSchema = new mongoose.Schema({
     required: true
   },
   notes: String
-}, { timestamps: true });
+},
+ { timestamps: true });
 
 module.exports = mongoose.model('Appointment', appointmentSchema);
