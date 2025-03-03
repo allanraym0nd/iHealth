@@ -1,9 +1,11 @@
 // ReceptionDashboard.jsx
 import React, { useState, useEffect } from 'react';
-import { User, Calendar, BarChart2, Settings } from 'lucide-react';
+import { User, Calendar, BarChart2, ClipboardList, Settings } from 'lucide-react';
 import ReceptionRegistration from './sections/ReceptionRegistration';
 import receptionService from '../api/receptionService';
 import AppointmentScheduler from './sections/AppointmentScheduler';
+import QueueManagement from './sections/QueueManagement';
+import AnalyticsDashboard from './sections/AnalyticsDashboard';
 
 
 const ReceptionDashboard = () => {
@@ -173,6 +175,12 @@ const renderDashboardContent = () => {
         return renderDashboardContent();
       case 'registration':
         return <ReceptionRegistration />;
+        case 'appointments':  
+        return <AppointmentScheduler />;
+        case 'queue':
+        return <QueueManagement />;
+        case 'analytics':
+      return <AnalyticsDashboard />;
       default:
         return renderDashboardContent();
     }
@@ -214,6 +222,46 @@ const renderDashboardContent = () => {
                 Patient Registration
               </button>
             </li>
+            <li>
+    <button
+      onClick={() => setActiveSection('appointments')}
+      className={`flex items-center w-full p-3 rounded-lg ${
+        activeSection === 'appointments' 
+          ? 'bg-blue-100 text-blue-800' 
+          : 'hover:bg-gray-100'
+      }`}
+    >
+      <Calendar className="mr-3" size={20} />
+      Appointments
+    </button>
+  </li>
+
+  <li>
+              <button
+                onClick={() => setActiveSection('queue')}
+                className={`flex items-center w-full p-3 rounded-lg ${
+                  activeSection === 'queue' 
+                    ? 'bg-blue-100 text-blue-800' 
+                    : 'hover:bg-gray-100'
+                }`}
+              >
+                <ClipboardList className="mr-3" size={20} />
+                Queue Management
+              </button>
+            </li>
+            <li>
+  <button
+    onClick={() => setActiveSection('analytics')}
+    className={`flex items-center w-full p-3 rounded-lg ${
+      activeSection === 'analytics' 
+        ? 'bg-blue-100 text-blue-800' 
+        : 'hover:bg-gray-100'
+    }`}
+  >
+    <BarChart2 className="mr-3" size={20} />
+    Reports & Analytics
+  </button>
+</li>
           </ul>
         </nav>
       </div>
