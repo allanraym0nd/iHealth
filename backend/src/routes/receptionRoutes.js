@@ -12,4 +12,9 @@ router.put('/patients/:id', receptionController.updatePatient);
 router.get('/appointments/today', receptionController.getTodayAppointments);
 router.get('/dashboard-stats', receptionController.getDashboardStats);
 
+// In receptionRoutes.js
+router.post('/appointments', auth, receptionController.createAppointment);
+router.get('/available-doctors', auth, receptionController.getAvailableDoctors);
+router.put('/appointments/:id/status', auth, receptionController.updateAppointmentStatus);
+
 module.exports = router;
