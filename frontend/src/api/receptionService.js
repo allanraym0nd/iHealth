@@ -88,7 +88,69 @@ updateAppointmentStatus: async (appointmentId, status) => {
     console.error('Error updating appointment status:', error);
     throw error;
   }
+},
+
+// In receptionService.js
+// Add these methods
+
+// Get current appointment queue
+getCurrentQueue: async () => {
+  try {
+    const response = await api.get('/reception/queue');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching appointment queue:', error);
+    throw error;
+  }
+},
+
+// Update appointment queue status
+updateQueueStatus: async (appointmentId, data) => {
+  try {
+    const response = await api.put(`/reception/appointments/${appointmentId}/queue-status`, data);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating appointment status:', error);
+    throw error;
+  }
+},
+
+// Reorder queue
+reorderQueue: async (appointments) => {
+  try {
+    const response = await api.post('/reception/queue/reorder', { appointments });
+    return response.data;
+  } catch (error) {
+    console.error('Error reordering queue:', error);
+    throw error;
+  }
+},
+
+// In receptionService.js
+// Add this method
+getWaitingTimeEstimate: async (appointmentId) => {
+  try {
+    const response = await api.get(`/reception/appointments/${appointmentId}/waiting-time`);
+    return response.data;
+  } catch (error) {
+    console.error('Error calculating waiting time:', error);
+    throw error;
+  }
+},
+
+// In receptionService.js
+getAppointmentAnalytics: async (period = 'day') => {
+  try {
+    const response = await api.get('/reception/analytics/appointments', {
+      params: { period }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching appointment analytics:', error);
+    throw error;
+  }
 }
+
 
 
   
