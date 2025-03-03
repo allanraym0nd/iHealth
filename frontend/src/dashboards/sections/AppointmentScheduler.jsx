@@ -227,7 +227,7 @@ const AppointmentSchedulingModal = ({ isOpen, onClose, onAppointmentAdded }) => 
   );
 };
 
-const AppointmentScheduling = () => {
+const AppointmentScheduler = () => {
   const [appointments, setAppointments] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
