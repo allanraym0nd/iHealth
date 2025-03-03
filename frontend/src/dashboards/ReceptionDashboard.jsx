@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { User, Calendar, BarChart2, Settings } from 'lucide-react';
 import ReceptionRegistration from './sections/ReceptionRegistration';
 import receptionService from '../api/receptionService';
+import AppointmentScheduler from './sections/AppointmentScheduler';
+
 
 const ReceptionDashboard = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
