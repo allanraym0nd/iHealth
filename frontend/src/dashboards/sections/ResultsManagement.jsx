@@ -24,10 +24,10 @@ const AddResultModal = ({ isOpen, onClose, onResultAdded }) => {
 
   const fetchPendingTests = async () => {
     try {
-      const response = await labService.getPendingTests();
+      const response = await labService.getTestsReadyForResults();
       setPendingTests(response.data || []);
     } catch (error) {
-      console.error('Error fetching pending tests:', error);
+      console.error('Error fetching tests ready for results:', error);
     }
   };
 
