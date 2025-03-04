@@ -271,18 +271,69 @@ createAppointment: async (req, res, next) => {
 
 getAppointments: async (req, res, next) => {
   try {
-    const doctor = await Doctor.findOne({ userId: req.user.id })
-      .populate({
-        path: 'appointments',
-        populate: {
-          path: 'patient',
-          model: 'Patient'
+    const doctor = await Doctor.findOne({ userId: req.user.id });
+    if (!doctor) {
+      throw new AppError('Doctor not found', 404);
+    }
+
+    // Get date filter from query parameters (defaulting to today)
+    const { dateFilter } = req.query;
+    
+    let dateQuery = {};
+    
+    if (dateFilter === 'today') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      dateQuery = {
+        date: {
+          $gte: today,
+          $lt: tomorrow
         }
-      });
+      };
+    } else if (dateFilter === 'week') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const weekLater = new Date(today);
+      weekLater.setDate(weekLater.getDate() + 7);
+      
+      dateQuery = {
+        date: {
+          $gte: today,
+          $lt: weekLater
+        }
+      };
+    } else if (dateFilter === 'all') {
+      // No date filter - show all
+      dateQuery = {};
+    } else {
+      // Default to today if no valid filter specified
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      dateQuery = {
+        date: {
+          $gte: today,
+          $lt: tomorrow
+        }
+      };
+    }
+
+    // Find all appointments for this doctor with date filter
+    const appointments = await Appointment.find({ 
+      doctor: doctor._id,
+      ...dateQuery
+    })
+      .populate('patient')
+      .sort({ date: 1, time: 1 });
     
     res.json({
       status: 'success',
-      data: doctor.appointments || []
+      data: appointments || []
     });
   } catch (error) {
     next(error);
@@ -293,18 +344,11 @@ cancelAppointment: async (req, res, next) => {
   try {
     const appointment = await Appointment.findByIdAndUpdate(
       req.params.id,
-      { status: 'Cancelled' },
+      { status: 'cancelled' }, // changed from 'Cancelled' to 'cancelled'
       { new: true }
     );
 
-    if (!appointment) {
-      throw new AppError('Appointment not found', 404);
-    }
-
-    res.json({
-      status: 'success',
-      data: appointment
-    });
+    // rest of the code
   } catch (error) {
     next(error);
   }
