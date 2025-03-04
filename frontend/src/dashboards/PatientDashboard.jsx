@@ -27,9 +27,12 @@ const PatientDashboard = () => {
       try {
         setLoading(true);
         const appointmentsResponse = await patientService.getAppointments();
+        
+        console.log('Dashboard Appointments Response:', appointmentsResponse);
+        
         const prescriptionsResponse = await patientService.getPrescriptions();
         const billsResponse = await patientService.getBills();
-
+  
         setDashboardData({
           appointments: appointmentsResponse.data || [],
           prescriptions: prescriptionsResponse.data || [],
@@ -42,7 +45,7 @@ const PatientDashboard = () => {
         setLoading(false);
       }
     };
-
+  
     fetchDashboardData();
   }, []);
 
@@ -78,7 +81,40 @@ const PatientDashboard = () => {
   const renderDashboardContent = () => {
     if (loading) return <div className="p-4">Loading...</div>;
     if (error) return <div className="p-4 text-red-500">{error}</div>;
-
+  
+    console.log('Full Dashboard Data:', dashboardData);
+  
+    const upcomingAppointments = dashboardData.appointments.filter(apt => {
+      // Convert to date objects
+      const appointmentDate = new Date(apt.date);
+      const today = new Date();
+      
+      // Normalize both dates to compare just the date part (not time)
+      const appointmentDateStr = appointmentDate.toISOString().split('T')[0];
+      const todayStr = today.toISOString().split('T')[0];
+      
+      // Check if appointment is today or in the future
+      const isUpcoming = appointmentDateStr >= todayStr;
+      
+      // Check if status is valid for upcoming
+      const hasValidStatus = ['scheduled', 'confirmed', 'waiting'].includes(apt.status.toLowerCase())
+      
+      console.log('Appointment filtering:', {
+        id: apt._id,
+        date: apt.date,
+        appointmentDate: appointmentDateStr,
+        today: todayStr,
+        status: apt.status,
+        isUpcoming,
+        hasValidStatus,
+        willInclude: isUpcoming && hasValidStatus
+      });
+    
+      return isUpcoming && hasValidStatus;
+    });
+  
+    console.log('Filtered Upcoming Appointments:', upcomingAppointments);
+  
     return (
       <div className="p-6">
         {/* Stats Cards */}
@@ -86,7 +122,7 @@ const PatientDashboard = () => {
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-gray-500 text-sm font-medium">Upcoming Appointments</h3>
             <p className="text-3xl font-bold text-gray-800">
-              {dashboardData.appointments.filter(apt => new Date(apt.date) > new Date()).length}
+              {upcomingAppointments.length}
             </p>
           </div>
           <div className="bg-white rounded-lg shadow p-6">
@@ -105,10 +141,13 @@ const PatientDashboard = () => {
 
         {/* Recent Appointments */}
         <div className="bg-white rounded-lg shadow mb-6">
-          <div className="p-4 border-b">
-            <h2 className="text-xl font-bold text-gray-800">Upcoming Appointments</h2>
-          </div>
-          <div className="p-4">
+        <div className="p-4 border-b">
+          <h2 className="text-xl font-bold text-gray-800">Upcoming Appointments</h2>
+        </div>
+        <div className="p-4">
+          {upcomingAppointments.length === 0 ? (
+            <p className="text-gray-500 text-center">No upcoming appointments</p>
+          ) : (
             <table className="w-full">
               <thead>
                 <tr className="text-left text-gray-500">
@@ -116,11 +155,11 @@ const PatientDashboard = () => {
                   <th className="pb-3">Date</th>
                   <th className="pb-3">Time</th>
                   <th className="pb-3">Type</th>
+                  <th className="pb-3">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {dashboardData.appointments
-                  .filter(apt => new Date(apt.date) > new Date())
+                {upcomingAppointments
                   .slice(0, 5)
                   .map((appointment) => (
                     <tr key={appointment._id} className="border-b">
@@ -128,15 +167,17 @@ const PatientDashboard = () => {
                       <td>{new Date(appointment.date).toLocaleDateString()}</td>
                       <td>{appointment.time}</td>
                       <td>{appointment.type}</td>
+                      <td>{appointment.status}</td>
                     </tr>
                   ))}
               </tbody>
             </table>
-          </div>
+          )}
         </div>
       </div>
-    );
-  };
+    </div>
+  );
+};
 
   const renderContent = () => {
     switch (activeSection) {
