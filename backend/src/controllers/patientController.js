@@ -84,12 +84,7 @@ const patientController = {
       .populate('doctor', 'name specialization')
       .sort('-date');
   
-      // Add these console logs
-     // console.log('Appointments Fetched:', appointments.map(apt => ({
-      //  id: apt._id,
-      //  doctorId: apt.doctor._id,
-      //  doctorName: apt.doctor.name
-   //   })));
+      console.log('Backend Appointments:', appointments);
   
       res.json({
         status: 'success',
