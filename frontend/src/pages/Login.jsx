@@ -54,6 +54,9 @@ const Login = () => {
       else if (role === 'pharmacy') navigate('/pharmacy-dashboard');
       else if (role === 'lab') navigate('/lab-dashboard');
       else if (role === 'billing') navigate('/billing-dashboard');
+      else if (role === 'reception') navigate('/reception-dashboard');
+      
+
       else setError('Invalid role');
   
     
@@ -77,6 +80,8 @@ const Login = () => {
           break;
         case 'billing':
           navigate('/billing-dashboard');
+          case 'reception':
+          navigate('/reception-dashboard');
           break;
         default:
           setError('Invalid role');
@@ -153,6 +158,7 @@ const Login = () => {
                <option value="pharmacy">Pharmacy</option>
                <option value="lab">Laboratory</option>
                <option value="billing">Billing</option>
+               <option value="reception">Reception</option>
              </select>
            </div>
          </div>
