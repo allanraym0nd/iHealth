@@ -24,6 +24,7 @@ router.put('/samples/:id/status', auth, labController.updateSampleStatus);
 router.get('/test-results', auth, labController.getTestResults);
 router.post('/test-results', auth, labController.addTestResult);
 router.put('/test-results/:id', auth, labController.updateTestResult);
+router.get('/tests/ready-for-results', labController.getTestsReadyForResults);
 
 // Inventory routes
 router.get('/inventory', auth, labController.getInventory);
