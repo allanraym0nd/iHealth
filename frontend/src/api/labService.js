@@ -125,6 +125,16 @@ updateTestResult: async (resultId, resultData) => {
     }
   },
 
+  getTestsReadyForResults: async () => {
+    try {
+      const response = await api.get('/lab/tests/ready-for-results');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching tests ready for results:', error);
+      throw error;
+    }
+  },
+
   // Add to labService.js
   getTestOrders: async () => {
     try {
