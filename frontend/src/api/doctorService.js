@@ -78,10 +78,11 @@ const doctorService = {
     }
   },
   // Get doctor's appointments
-  getAppointments: async () => {
+  getAppointments: async (dateFilter = 'today') => {
     try {
-      const response = await api.get('/doctors/appointments');  // Removed extra 'api'
-      console.log('Appointments response:', response);
+      const response = await api.get('/doctors/appointments', {
+        params: { dateFilter }
+      });
       return response.data;
     } catch (error) {
       console.error('Appointments error:', error.response || error);
