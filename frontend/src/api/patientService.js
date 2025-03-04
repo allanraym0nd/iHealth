@@ -37,15 +37,20 @@ const patientService = {
   },
   
   // Appointments
-  getAppointments: async () => {
-    try {
-      const response = await api.get('/patients/appointments');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching appointments:', error);
-      throw error;
-    }
-  },
+  // Add some console logs in patientService.js
+getAppointments: async () => {
+  try {
+    const response = await api.get('/patients/appointments');
+    
+    console.log('Raw Appointments Response:', response.data);
+    console.log('Appointments Data:', response.data.data);
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching appointments:', error);
+    throw error;
+  }
+},
 
   requestAppointment: async (appointmentData) => {
     try {
