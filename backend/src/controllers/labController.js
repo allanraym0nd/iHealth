@@ -184,6 +184,40 @@ getCompletedTests: async (req, res, next) => {
   }
 },
 
+getTestsReadyForResults: async (req, res, next) => {
+  try {
+    const lab = await Lab.findOne()
+      .populate('testOrders.patient')
+      .populate('testOrders.doctor');
+
+    if (!lab) {
+      return res.json({
+        status: 'success',
+        data: []
+      });
+    }
+
+    // Find tests with collected samples but no results yet
+    const testsReadyForResults = lab.testOrders.filter(test => 
+      test.status === 'sample_collected' || 
+      test.status === 'In Progress' ||
+      (lab.samples && lab.samples.some(sample => 
+        sample.testOrderId && 
+        sample.testOrderId.toString() === test._id.toString() && 
+        sample.status === 'collected'
+      ))
+    );
+
+    res.json({
+      status: 'success',
+      data: testsReadyForResults
+    });
+  } catch (error) {
+    console.error('Error getting tests ready for results:', error);
+    next(error);
+  }
+},
+
 getInventory: async (req, res, next) => {
   try {
     const lab = await Lab.findOne();
