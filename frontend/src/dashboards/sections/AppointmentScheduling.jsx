@@ -230,31 +230,35 @@ const RescheduleModal = ({ isOpen, onClose, appointment, onReschedule }) => {
 };
 
 const AppointmentScheduling = () => {
- const [appointments, setAppointments] = useState([]);
- const [loading, setLoading] = useState(true);
- const [error, setError] = useState(null);
- const [isModalOpen, setIsModalOpen] = useState(false);
- const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
- const [editingAppointment, setEditingAppointment] = useState(null);
- const [selectedAppointmentForReschedule, setSelectedAppointmentForReschedule] = useState(null);
-
- useEffect(() => {
-   fetchAppointments();
- }, []);
-
- const fetchAppointments = async () => {
-   try {
-     setLoading(true);
-     const response = await doctorService.getAppointments();
-     setAppointments(response.data || []);
-     setError(null);
-   } catch (err) {
-     console.error('Error fetching appointments:', err);
-     setError('Failed to load appointments');
-   } finally {
-     setLoading(false);
-   }
- };
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+  const [editingAppointment, setEditingAppointment] = useState(null);
+  const [selectedAppointmentForReschedule, setSelectedAppointmentForReschedule] = useState(null);
+  
+  // Add date filter state
+  const [dateFilter, setDateFilter] = useState('today');
+ 
+  useEffect(() => {
+    fetchAppointments();
+  }, [dateFilter]); // Add dateFilter to dependency array
+ 
+  const fetchAppointments = async () => {
+    try {
+      setLoading(true);
+      const response = await doctorService.getAppointments(dateFilter);
+      setAppointments(response.data || []);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching appointments:', err);
+      setError('Failed to load appointments');
+    } finally {
+      setLoading(false);
+    }
+  };
+ 
 
  const handleEdit = async (appointmentId) => {
    setEditingAppointment(appointments.find(apt => apt._id === appointmentId));
@@ -300,78 +304,100 @@ const AppointmentScheduling = () => {
  if (error) return <div className="p-4 text-red-500">{error}</div>;
 
  return (
-   <div className="p-6">
-     <div className="flex justify-between items-center mb-6">
-       <h2 className="text-2xl font-bold text-gray-800">Appointments</h2>
-       <button 
-         onClick={() => setIsModalOpen(true)}
-         className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-       >
-         <Plus size={20} className="mr-2" />
-         New Appointment
-       </button>
-     </div>
+  <div className="p-6">
+    <div className="flex justify-between items-center mb-6">
+      <h2 className="text-2xl font-bold text-gray-800">Appointments</h2>
+      <button 
+        onClick={() => setIsModalOpen(true)}
+        className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+      >
+        <Plus size={20} className="mr-2" />
+        New Appointment
+      </button>
+    </div>
 
-     <div className="flex gap-4 mb-6">
-       <div className="flex-1 relative">
-         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-         <input
-           type="text"
-           placeholder="Search appointments..."
-           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-         />
-       </div>
-       <select className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-         <option value="all">All Status</option>
-         <option value="scheduled">Scheduled</option>
-         <option value="completed">Completed</option>
-         <option value="cancelled">Cancelled</option>
-       </select>
-     </div>
+    {/* Date Filter Buttons */}
+    <div className="flex space-x-2 mb-4">
+      <button 
+        onClick={() => setDateFilter('today')}
+        className={`px-3 py-1 rounded ${dateFilter === 'today' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+      >
+        Today
+      </button>
+      <button 
+        onClick={() => setDateFilter('week')}
+        className={`px-3 py-1 rounded ${dateFilter === 'week' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+      >
+        This Week
+      </button>
+      <button 
+        onClick={() => setDateFilter('all')}
+        className={`px-3 py-1 rounded ${dateFilter === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+      >
+        All Appointments
+      </button>
+    </div>
 
-     <div className="bg-white rounded-lg shadow overflow-hidden">
-       <table className="w-full">
-         <thead className="bg-gray-50">
-           <tr>
-             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
-             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-           </tr>
-         </thead>
-         <tbody className="bg-white divide-y divide-gray-200">
-           {appointments.length === 0 ? (
-             <tr>
-               <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
-                 No appointments found
-               </td>
-             </tr>
-           ) : (
-             appointments.map((appointment) => (
-               <tr key={appointment._id}>
-                 <td className="px-6 py-4 whitespace-nowrap">{appointment.patient?.name || 'N/A'}</td>
-                 <td className="px-6 py-4 whitespace-nowrap">
-                   {new Date(appointment.date).toLocaleDateString()}
-                 </td>
-                 <td className="px-6 py-4 whitespace-nowrap">{appointment.time}</td>
-                 <td className="px-6 py-4 whitespace-nowrap">{appointment.type}</td>
-                 <td className="px-6 py-4 whitespace-nowrap">
-                   <span className={`px-2 py-1 text-sm rounded-full ${
-                     appointment.status === 'completed' 
-                       ? 'bg-green-100 text-green-800'
-                       : 'bg-blue-100 text-blue-800'
-                   }`}>
-                     {appointment.status}
-                   </span>
-                 </td>
-                 <td className="px-6 py-4 whitespace-nowrap">
-                   <div className="flex space-x-2">
-                     <button 
-                       onClick={() => handleEdit(appointment._id)}
-                       className="text-blue-600 hover:text-blue-900 font-medium" 
-                       >
+    <div className="flex gap-4 mb-6">
+      <div className="flex-1 relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+        <input
+          type="text"
+          placeholder="Search appointments..."
+          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <select className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="all">All Status</option>
+        <option value="scheduled">Scheduled</option>
+        <option value="completed">Completed</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+    </div>
+
+    <div className="bg-white rounded-lg shadow overflow-hidden">
+      <table className="w-full">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {appointments.length === 0 ? (
+            <tr>
+              <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                No appointments found
+              </td>
+            </tr>
+          ) : (
+            appointments.map((appointment) => (
+              <tr key={appointment._id}>
+                <td className="px-6 py-4 whitespace-nowrap">{appointment.patient?.name || 'N/A'}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {new Date(appointment.date).toLocaleDateString()}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">{appointment.time}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{appointment.type}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 py-1 text-sm rounded-full ${
+                    appointment.status === 'completed' 
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {appointment.status}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex space-x-2">
+                    <button 
+                      onClick={() => handleEdit(appointment._id)}
+                      className="text-blue-600 hover:text-blue-900 font-medium" 
+                    >
                       Edit
                     </button>
                     <button 
