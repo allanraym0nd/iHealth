@@ -218,9 +218,12 @@ registerPatient: async (req, res, next) => {
   },
 
   // Create appointment from reception
+// In receptionController.js
 createAppointment: async (req, res, next) => {
   try {
     const { patientId, doctorId, date, time, type, notes, priority } = req.body;
+
+    console.log('Creating appointment with doctor ID:', doctorId);
 
     // Validate patient and doctor exist
     const patient = await Patient.findById(patientId);
@@ -233,6 +236,8 @@ createAppointment: async (req, res, next) => {
     if (!doctor) {
       return next(new AppError('Doctor not found', 404));
     }
+
+    console.log('Found doctor:', doctor._id.toString());
 
     // Create new appointment
     const newAppointment = new Appointment({
@@ -248,6 +253,12 @@ createAppointment: async (req, res, next) => {
     });
 
     await newAppointment.save();
+    console.log('Saved new appointment:', newAppointment._id);
+
+    // Also add to doctor's appointments array
+    doctor.appointments.push(newAppointment._id);
+    await doctor.save();
+    console.log('Updated doctor with new appointment');
 
     res.status(201).json({
       status: 'success',
@@ -255,10 +266,10 @@ createAppointment: async (req, res, next) => {
       data: newAppointment
     });
   } catch (error) {
+    console.error('Error creating appointment:', error);
     next(new AppError('Failed to create appointment', 500));
   }
 },
-
 // Get available doctors for appointment scheduling
 getAvailableDoctors: async (req, res, next) => {
   try {
