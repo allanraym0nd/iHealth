@@ -27,7 +27,7 @@ const labSchema = new mongoose.Schema({
       date: Date
     }
   }],
-  // ... rest of your schema remains the same
+  // ... rest of the schema remains the same
   samples: [{
     testOrder: {
       type: mongoose.Schema.Types.ObjectId
