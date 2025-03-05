@@ -414,8 +414,8 @@ getReorderRequests: async (req, res, next) => {
           message: 'Test order not found'
         });
       }
-  
-      // Ensure comprehensive result recording
+    
+      // Record the test result
       testOrder.results = {
         value: req.body.value,
         unit: req.body.unit,
@@ -425,10 +425,24 @@ getReorderRequests: async (req, res, next) => {
         notes: req.body.notes || '',
         date: new Date()
       };
+      
+      // Make sure to update the status to "Completed"
       testOrder.status = 'Completed';
-  
+      
       await lab.save();
-  
+      
+      // Also update any corresponding sample status
+      if (lab.samples) {
+        const relatedSample = lab.samples.find(sample => 
+          sample.testOrderId && sample.testOrderId.toString() === testOrder._id.toString()
+        );
+        
+        if (relatedSample) {
+          relatedSample.status = 'processed';
+          await lab.save();
+        }
+      }
+    
       res.json({
         status: 'success',
         data: testOrder
@@ -438,7 +452,6 @@ getReorderRequests: async (req, res, next) => {
       next(error);
     }
   },
-  
   
   
   updateTestResult: async (req, res, next) => {
