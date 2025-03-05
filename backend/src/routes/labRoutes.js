@@ -40,4 +40,6 @@ router.get('/doctors-list', auth, labController.getDoctorsList);
 router.get('/reorder-requests', auth, labController.getReorderRequests);
 router.post('/reorder-requests', auth, inventoryValidation, validate, labController.createReorderRequest);
 
+
+
 module.exports = router;
