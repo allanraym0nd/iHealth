@@ -11,6 +11,7 @@ const LabDashboard = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [dashboardData, setDashboardData] = useState({
     pendingTests: [],
     completedTests: [],
@@ -21,7 +22,7 @@ const LabDashboard = () => {
     if (activeSection === 'dashboard') {
       fetchDashboardData();
     }
-  }, [activeSection]);
+  }, [activeSection, refreshTrigger]);
 
   const fetchDashboardData = async () => {
     try {
@@ -42,6 +43,11 @@ const LabDashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Function to trigger dashboard refresh from child components
+  const refreshDashboard = () => {
+    setRefreshTrigger(prev => prev + 1);
   };
 
   const sidebarItems = [
@@ -186,14 +192,13 @@ const LabDashboard = () => {
       case 'dashboard':
         return renderDashboardContent();
       case 'test-orders':
-        return <TestOrders />;
-        case 'samples':
-      return <SampleManagement />;
-    case 'results':
-   return <ResultsManagement />;
-   case 'inventory':
-   return <InventoryManagement />;
-
+        return <TestOrders onTestStatusChange={refreshDashboard} />;
+      case 'samples':
+        return <SampleManagement onSampleUpdate={refreshDashboard} />;
+      case 'results':
+        return <ResultsManagement onResultAdded={refreshDashboard} />;
+      case 'inventory':
+        return <InventoryManagement />;
       case 'communication':
         return <Communication />;
       default:
