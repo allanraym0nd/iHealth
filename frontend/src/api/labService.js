@@ -178,6 +178,17 @@ updateTestResult: async (resultId, resultData) => {
       throw error;
     }
   },
+
+  // Add to labService.js
+removeTestOrder: async (testId) => {
+  try {
+    const response = await api.delete(`/lab/test-orders/${testId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error removing test order:', error);
+    throw error;
+  }
+},
   
   getPatients: async () => {
     try {
