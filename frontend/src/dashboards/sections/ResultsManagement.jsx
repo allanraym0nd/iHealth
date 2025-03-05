@@ -59,7 +59,7 @@ const AddResultModal = ({ isOpen, onClose, onResultAdded }) => {
   
       console.log('Server Response:', response);
   
-      onResultAdded(); // Changed from onTestOrderCreated
+      onResultAdded(); // This will trigger result refresh and dashboard refresh
       onClose();
     } catch (error) {
       console.error('Detailed Error:', error.response?.data || error);
@@ -203,7 +203,7 @@ const AddResultModal = ({ isOpen, onClose, onResultAdded }) => {
   );
 };
 
-const ResultsManagement = () => {
+const ResultsManagement = (props) => {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -231,6 +231,17 @@ const ResultsManagement = () => {
       setError('Failed to load results');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // This function will be passed to the modal
+  // It will refresh the results and notify the parent dashboard
+  const handleResultAdded = () => {
+    fetchResults(); // Refresh the results list
+    
+    // Notify the parent dashboard to refresh as well
+    if (props.onResultAdded) {
+      props.onResultAdded();
     }
   };
 
@@ -297,44 +308,44 @@ const ResultsManagement = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-  {results.map((result) => (
-    <tr key={result._id}>
-      <td className="px-6 py-4">{result.patient?.name || 'Unknown Patient'}</td>
-      <td className="px-6 py-4">{result.testType}</td>
-      <td className="px-6 py-4">
-        {result.value} {result.unit}
-      </td>
-      <td className="px-6 py-4">{result.referenceRange}</td>
-      <td className="px-6 py-4">
-        <span className={`px-2 py-1 text-xs rounded-full ${
-          result.interpretation === 'Normal'
-            ? 'bg-green-100 text-green-800'
-            : result.interpretation === 'High'
-            ? 'bg-red-100 text-red-800'
-            : result.interpretation === 'Low'
-            ? 'bg-yellow-100 text-yellow-800'
-            : 'bg-gray-100 text-gray-800'
-        }`}>
-          {result.interpretation}
-        </span>
-      </td>
-      <td className="px-6 py-4">
-        {result.isCritical && (
-          <span className="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">
-            CRITICAL
-          </span>
-        )}
-      </td>
-    </tr>
-  ))}
-</tbody>
+            {filteredResults.map((result) => (
+              <tr key={result._id}>
+                <td className="px-6 py-4">{result.patient?.name || 'Unknown Patient'}</td>
+                <td className="px-6 py-4">{result.testType}</td>
+                <td className="px-6 py-4">
+                  {result.value} {result.unit}
+                </td>
+                <td className="px-6 py-4">{result.referenceRange}</td>
+                <td className="px-6 py-4">
+                  <span className={`px-2 py-1 text-xs rounded-full ${
+                    result.interpretation === 'Normal'
+                      ? 'bg-green-100 text-green-800'
+                      : result.interpretation === 'High'
+                      ? 'bg-red-100 text-red-800'
+                      : result.interpretation === 'Low'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {result.interpretation}
+                  </span>
+                </td>
+                <td className="px-6 py-4">
+                  {result.isCritical && (
+                    <span className="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">
+                      CRITICAL
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
         </table>
       </div>
 
       <AddResultModal 
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
-        onResultAdded={fetchResults}
+        onResultAdded={handleResultAdded} // Use our new function instead of just fetchResults
       />
     </div>
   );
