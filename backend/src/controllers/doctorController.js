@@ -511,54 +511,35 @@ createLabOrder: async (req, res, next) => {
   }
 },
 
+// In doctorController.js - method for getting lab orders
 getLabOrders: async (req, res, next) => {
   try {
     const doctor = await Doctor.findOne({ userId: req.user.id });
-    if (!doctor) {
-      throw new AppError('Doctor not found', 404);
-    }
-
-    // Find lab record
+    
+    // Fetch all lab data
     const lab = await Lab.findOne();
-    if (!lab) {
-      return res.json({
-        status: 'success',
-        data: []
-      });
-    }
-
-    // Add a safety check for testOrders
-    if (!lab.testOrders || !Array.isArray(lab.testOrders)) {
-      return res.json({
-        status: 'success',
-        data: []
-      });
-    }
-
-    // Filter test orders for this doctor, with proper null/undefined checking
-    const doctorOrders = lab.testOrders.filter(order => {
-      return order.doctor && doctor._id && 
-             order.doctor.toString() === doctor._id.toString();
-    });
-
-    // Populate patient data for each order
+    
+    // Filter orders for this doctor
+    const doctorOrders = lab.testOrders.filter(order => 
+      order.doctor && doctor._id && 
+      order.doctor.toString() === doctor._id.toString()
+    );
+    
+    // Populate with patient data
     const populatedOrders = await Promise.all(
       doctorOrders.map(async order => {
-        if (!order.patient) {
-          return {
-            ...order.toObject(),
-            patient: { name: 'Unknown Patient' }
-          };
+        let patient = null;
+        if (order.patient) {
+          patient = await Patient.findById(order.patient);
         }
         
-        const patient = await Patient.findById(order.patient);
         return {
           ...order.toObject(),
           patient: patient || { name: 'Unknown Patient' }
         };
       })
     );
-
+    
     res.json({
       status: 'success',
       data: populatedOrders
