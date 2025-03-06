@@ -49,7 +49,7 @@ const Login = () => {
   
       // Single navigation based on role
       if (role === 'doctor') navigate('/doctor-dashboard');
-      else if (role === 'nurse') navigate('/nurse-dashboard');
+      // else if (role === 'nurse') navigate('/nurse-dashboard');
       else if (role === 'patient') navigate('/patient-dashboard');
       else if (role === 'pharmacy') navigate('/pharmacy-dashboard');
       else if (role === 'lab') navigate('/lab-dashboard');
@@ -66,7 +66,7 @@ const Login = () => {
         case 'doctor':
           navigate('/doctor-dashboard');
           break;
-        case 'nurse':
+        // case 'nurse':
           navigate('/nurse-dashboard');
           break;
         case 'patient':
@@ -153,7 +153,7 @@ const Login = () => {
              >
                <option value="">Select Role</option>
                <option value="doctor">Doctor</option>
-               <option value="nurse">Nurse</option>
+     //          <option value="nurse">Nurse</option>
                <option value="patient">Patient</option>
                <option value="pharmacy">Pharmacy</option>
                <option value="lab">Laboratory</option>
