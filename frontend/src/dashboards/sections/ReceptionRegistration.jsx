@@ -3,10 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { Search, Plus, Edit, Trash2, X } from 'lucide-react';
 import receptionService from '../../api/receptionService'; // You'll need to create this
 
-const EnhancedPatientModal = ({ isOpen, onClose, onSubmit }) => {
+const EnhancedPatientModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    // Personal Information
+    // Default values for a new patient
     name: '',
     age: '',
     gender: '',
@@ -16,25 +16,56 @@ const EnhancedPatientModal = ({ isOpen, onClose, onSubmit }) => {
       email: '',
       address: ''
     },
-    // Emergency Contact
     emergencyContact: {
       name: '',
       relationship: '',
       phone: ''
     },
-    // Insurance Information
     insurance: {
       provider: '',
       policyNumber: '',
       groupNumber: '',
       policyHolder: ''
     },
-    // Medical Information
     allergies: '',
     medications: '',
     medicalConditions: '',
     status: 'active'
   });
+
+  // Initialize form with existing data if editing
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        name: initialData.name || '',
+        age: initialData.age || '',
+        gender: initialData.gender || '',
+        dateOfBirth: initialData.dateOfBirth || '',
+        contact: {
+          phone: initialData.contact?.phone || '',
+          email: initialData.contact?.email || '',
+          address: initialData.contact?.address || ''
+        },
+        emergencyContact: {
+          name: initialData.emergencyContact?.name || '',
+          relationship: initialData.emergencyContact?.relationship || '',
+          phone: initialData.emergencyContact?.phone || ''
+        },
+        insurance: {
+          provider: initialData.insurance?.provider || '',
+          policyNumber: initialData.insurance?.policyNumber || '',
+          groupNumber: initialData.insurance?.groupNumber || '',
+          policyHolder: initialData.insurance?.policyHolder || ''
+        },
+        allergies: initialData.allergies || '',
+        medications: initialData.medications || '',
+        medicalConditions: initialData.medicalConditions || '',
+        status: initialData.status || 'active'
+      });
+    }
+  }, [initialData]);
+  // ...
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -492,11 +523,16 @@ const prevStep = (e) => {
   );
 };
 
+// PatientRegistration.jsx - Updated with working search and action buttons
+
 const PatientRegistration = () => {
   const [patients, setPatients] = useState([]);
+  const [filteredPatients, setFilteredPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingPatient, setEditingPatient] = useState(null);
   const [filterStatus, setFilterStatus] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -504,12 +540,35 @@ const PatientRegistration = () => {
     fetchPatients();
   }, []);
 
+  // Add effect to filter patients when search or filter changes
+  useEffect(() => {
+    if (patients.length > 0) {
+      const filtered = patients.filter(patient => {
+        // Filter by search term
+        const matchesSearch = searchTerm === '' || 
+          (patient.name && patient.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (patient.contact?.phone && patient.contact.phone.includes(searchTerm)) ||
+          (patient.contact?.email && patient.contact.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (patient._id && patient._id.toLowerCase().includes(searchTerm.toLowerCase()));
+        
+        // Filter by status
+        const matchesStatus = filterStatus === '' || patient.status === filterStatus;
+        
+        return matchesSearch && matchesStatus;
+      });
+      
+      setFilteredPatients(filtered);
+    } else {
+      setFilteredPatients([]);
+    }
+  }, [searchTerm, filterStatus, patients]);
+
   const fetchPatients = async () => {
     try {
       setLoading(true);
-      // You can reuse your existing service or create a new one for reception
       const response = await receptionService.getAllPatients();
       setPatients(response.data || []);
+      setFilteredPatients(response.data || []); // Initialize filtered patients
       setError(null);
     } catch (err) {
       console.error('Error fetching patients:', err);
@@ -519,41 +578,85 @@ const PatientRegistration = () => {
     }
   };
 
-  // In handleRegisterPatient
-const handleRegisterPatient = async (patientData) => {
-  try {
-    // Log the exact data before submission
-    console.log('SUBMITTING PATIENT DATA:', JSON.stringify(patientData, null, 2));
-    
-    // Create the formatted data
-    const formattedData = {
-      name: patientData.name,
-      age: parseInt(patientData.age),
-      gender: patientData.gender,
-      dateOfBirth: patientData.dateOfBirth,
-      contact: patientData.contact,
-      emergencyContact: patientData.emergencyContact,
-      insurance: patientData.insurance,
-      medicalHistory: {
-        allergies: patientData.allergies || 'None',
-        medications: patientData.medications || 'None',
-        conditions: patientData.medicalConditions || 'None'
-      },
-      status: patientData.status || 'active'
-    };
-    
-    console.log('FORMATTED DATA:', JSON.stringify(formattedData, null, 2));
-    console.log('GENDER VALUE:', formattedData.gender);
-    
-    const response = await receptionService.registerPatient(formattedData);
-    fetchPatients();
-    return true;
-  } catch (error) {
-    console.error('Registration error:', error);
-    alert('Failed to register patient');
-    return false;
-  }
-};
+  const handleRegisterPatient = async (patientData) => {
+    try {
+      console.log('SUBMITTING PATIENT DATA:', JSON.stringify(patientData, null, 2));
+      
+      const formattedData = {
+        name: patientData.name,
+        age: parseInt(patientData.age),
+        gender: patientData.gender,
+        dateOfBirth: patientData.dateOfBirth,
+        contact: patientData.contact,
+        emergencyContact: patientData.emergencyContact,
+        insurance: patientData.insurance,
+        medicalHistory: {
+          allergies: patientData.allergies || 'None',
+          medications: patientData.medications || 'None',
+          conditions: patientData.medicalConditions || 'None'
+        },
+        status: patientData.status || 'active'
+      };
+      
+      await receptionService.registerPatient(formattedData);
+      fetchPatients();
+      return true;
+    } catch (error) {
+      console.error('Registration error:', error);
+      alert('Failed to register patient');
+      return false;
+    }
+  };
+
+  const handleEditPatient = async (patientData) => {
+    try {
+      const formattedData = {
+        name: patientData.name,
+        age: parseInt(patientData.age),
+        gender: patientData.gender,
+        dateOfBirth: patientData.dateOfBirth,
+        contact: patientData.contact,
+        emergencyContact: patientData.emergencyContact,
+        insurance: patientData.insurance,
+        medicalHistory: {
+          allergies: patientData.allergies || 'None',
+          medications: patientData.medications || 'None',
+          conditions: patientData.medicalConditions || 'None'
+        },
+        status: patientData.status || 'active'
+      };
+
+      await receptionService.updatePatient(editingPatient._id, formattedData);
+      fetchPatients();
+      return true;
+    } catch (error) {
+      console.error('Update error:', error);
+      alert('Failed to update patient');
+      return false;
+    }
+  };
+
+  const handleDeletePatient = async (patientId) => {
+    if (window.confirm('Are you sure you want to delete this patient? This action cannot be undone.')) {
+      try {
+        await receptionService.deletePatient(patientId);
+        fetchPatients();
+      } catch (error) {
+        console.error('Delete error:', error);
+        alert('Failed to delete patient');
+      }
+    }
+  };
+
+  const openEditModal = (patient) => {
+    setEditingPatient({
+      ...patient,
+      allergies: patient.medicalHistory?.allergies || '',
+      medications: patient.medicalHistory?.medications || '',
+      medicalConditions: patient.medicalHistory?.conditions || ''
+    });
+    setShowEditModal(true);
+  };
 
   if (loading) return <div className="p-4">Loading patients...</div>;
   if (error) return <div className="p-4 text-red-500">{error}</div>;
@@ -578,8 +681,9 @@ const handleRegisterPatient = async (patientData) => {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <input
             type="text"
-            placeholder="Search patients..."
+            placeholder="Search patients by name, ID, or contact..."
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+            value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
@@ -594,70 +698,101 @@ const handleRegisterPatient = async (patientData) => {
         </select>
       </div>
 
-      {/* Patients Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Insurance</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {patients.length === 0 ? (
-              <tr>
-                <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
-                  No patients found
-                </td>
-              </tr>
-            ) : (
-              patients.map((patient) => (
-                <tr key={patient._id}>
-                  <td className="px-6 py-4 whitespace-nowrap">{patient.name || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{patient._id?.substring(0, 6) || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{patient.age || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div>{patient.contact?.phone || 'N/A'}</div>
-                    <div className="text-xs">{patient.contact?.email || 'N/A'}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">{patient.insurance?.provider || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-sm ${
-                      patient.status === 'active' 
-                        ? 'text-green-800 bg-green-100' 
-                        : 'text-red-800 bg-red-100'
-                      } rounded-full`}
-                    >
-                      {patient.status || 'Active'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex space-x-2">
-                      <button className="text-blue-600 hover:text-blue-900">
-                        <Edit size={18} />
-                      </button>
-                      <button className="text-red-600 hover:text-red-900">
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      {/* Results count */}
+      <div className="mb-4 text-sm text-gray-600">
+        Showing {filteredPatients.length} of {patients.length} patients
       </div>
 
+      {/* Patients Table with Horizontal Scroll */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px]">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Insurance</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredPatients.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                    {searchTerm || filterStatus 
+                      ? "No patients match your search criteria" 
+                      : "No patients found"}
+                  </td>
+                </tr>
+              ) : (
+                filteredPatients.map((patient) => (
+                  <tr key={patient._id}>
+                    <td className="px-6 py-4 whitespace-nowrap">{patient.name || 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{patient._id?.substring(0, 6) || 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{patient.age || 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div>{patient.contact?.phone || 'N/A'}</div>
+                      <div className="text-xs text-gray-500">{patient.contact?.email || 'N/A'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">{patient.insurance?.provider || 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-sm ${
+                        patient.status === 'active' 
+                          ? 'text-green-800 bg-green-100' 
+                          : 'text-red-800 bg-red-100'
+                        } rounded-full`}
+                      >
+                        {patient.status || 'Active'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex space-x-2">
+                        <button 
+                          onClick={() => openEditModal(patient)}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="Edit patient"
+                        >
+                          <Edit size={18} />
+                        </button>
+                        <button 
+                          onClick={() => handleDeletePatient(patient._id)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Delete patient"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Add Patient Modal */}
       <EnhancedPatientModal 
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSubmit={handleRegisterPatient}
       />
+
+      {/* Edit Patient Modal */}
+      {editingPatient && (
+        <EnhancedPatientModal 
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingPatient(null);
+          }}
+          onSubmit={handleEditPatient}
+          initialData={editingPatient}
+        />
+      )}
     </div>
   );
 };
