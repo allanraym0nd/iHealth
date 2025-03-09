@@ -9,7 +9,8 @@ const AddRecordModal = ({ isOpen, onClose, onRecordAdded }) => {
     diagnosis: '',
     symptoms: '',
     treatment: '',
-    notes: ''
+    notes: '',
+    type: '' // Adding type field
   });
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -68,6 +69,23 @@ const AddRecordModal = ({ isOpen, onClose, onRecordAdded }) => {
                   {patient.name}
                 </option>
               ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Record Type</label>
+            <select
+              className="mt-1 w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={formData.type}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+              required
+            >
+              <option value="">Select Type</option>
+              <option value="Check-up">Check-up</option>
+              <option value="Emergency">Emergency</option>
+              <option value="Surgery">Surgery</option>
+              <option value="Follow-up">Follow-up</option>
+              <option value="Consultation">Consultation</option>
             </select>
           </div>
 
@@ -150,20 +168,74 @@ const AddRecordModal = ({ isOpen, onClose, onRecordAdded }) => {
 // Main Component
 const MedicalRecords = () => {
   const [records, setRecords] = useState([]);
+  const [filteredRecords, setFilteredRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isFiltering, setIsFiltering] = useState(false);
   const [error, setError] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  
+  // Search and filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all'); // 'all', 'week', 'month'
 
   useEffect(() => {
     fetchRecords();
-  }, []);
+  }, [dateFilter]);
+
+  // Filter records when search term or type filter changes
+  useEffect(() => {
+    if (records.length > 0) {
+      setIsFiltering(true);
+      
+      // Use a small timeout to avoid flickering for fast filters
+      const filterTimer = setTimeout(() => {
+        const filtered = records.filter(record => {
+          // Filter by search term
+          const matchesSearch = searchTerm === '' || 
+            (record.patient?.name && record.patient.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (record.diagnosis && record.diagnosis.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (record.symptoms && typeof record.symptoms === 'string' && record.symptoms.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (record.treatment && typeof record.treatment === 'string' && record.treatment.toLowerCase().includes(searchTerm.toLowerCase()));
+          
+          // Filter by type
+          const matchesType = typeFilter === 'all' || record.type === typeFilter;
+          
+          return matchesSearch && matchesType;
+});
+        
+        setFilteredRecords(filtered);
+        setIsFiltering(false);
+      }, 200);
+      
+      return () => clearTimeout(filterTimer);
+    } else {
+      setFilteredRecords([]);
+    }
+  }, [searchTerm, typeFilter, records]);
 
   const fetchRecords = async () => {
     try {
       setLoading(true);
-      const response = await doctorService.getMedicalRecords();
+      
+      // Prepare date filter parameters
+      let params = {};
+      if (dateFilter === 'week') {
+        const today = new Date();
+        const weekAgo = new Date();
+        weekAgo.setDate(today.getDate() - 7);
+        params = { startDate: weekAgo.toISOString(), endDate: today.toISOString() };
+      } else if (dateFilter === 'month') {
+        const today = new Date();
+        const monthAgo = new Date();
+        monthAgo.setMonth(today.getMonth() - 1);
+        params = { startDate: monthAgo.toISOString(), endDate: today.toISOString() };
+      }
+      
+      const response = await doctorService.getMedicalRecords(params);
       setRecords(response.data || []);
+      setFilteredRecords(response.data || []);
       setError(null);
     } catch (err) {
       console.error('Error fetching medical records:', err);
@@ -177,7 +249,39 @@ const MedicalRecords = () => {
     setSelectedRecord(record);
   };
 
-  if (loading) return <div className="p-4">Loading medical records...</div>;
+  const handleDownloadRecord = (record) => {
+    // Create a text representation of the record
+    const recordText = `
+      MEDICAL RECORD
+      
+      Patient: ${record.patient?.name || 'N/A'}
+      Date: ${new Date(record.date).toLocaleDateString()}
+      Type: ${record.type || 'N/A'}
+      Diagnosis: ${record.diagnosis || 'N/A'}
+      
+      Symptoms:
+      ${record.symptoms || 'None recorded'}
+      
+      Treatment:
+      ${record.treatment || 'None recorded'}
+      
+      Notes:
+      ${record.notes || 'None recorded'}
+    `;
+    
+    // Create blob and download
+    const blob = new Blob([recordText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Medical_Record_${record.patient?.name}_${new Date(record.date).toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  if (loading && !isFiltering) return <div className="p-4">Loading medical records...</div>;
   if (error) return <div className="p-4 text-red-500">{error}</div>;
 
   return (
@@ -194,22 +298,65 @@ const MedicalRecords = () => {
         </button>
       </div>
 
-      {/* Rest of your existing UI code remains the same */}
+      {/* Date Filter Buttons */}
+      <div className="flex space-x-2 mb-4">
+        <button 
+          onClick={() => setDateFilter('all')}
+          className={`px-3 py-1 rounded ${dateFilter === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+        >
+          All Records
+        </button>
+        <button 
+          onClick={() => setDateFilter('week')}
+          className={`px-3 py-1 rounded ${dateFilter === 'week' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+        >
+          Last 7 Days
+        </button>
+        <button 
+          onClick={() => setDateFilter('month')}
+          className={`px-3 py-1 rounded ${dateFilter === 'month' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+        >
+          Last 30 Days
+        </button>
+      </div>
+
+      {/* Search and Filter */}
       <div className="flex gap-4 mb-6">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <input
             type="text"
-            placeholder="Search records..."
+            placeholder="Search records by patient, diagnosis..."
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <select className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <select 
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+        >
           <option value="all">All Types</option>
-          <option value="check-up">Check-ups</option>
-          <option value="emergency">Emergency</option>
-          <option value="surgery">Surgery</option>
+          <option value="Check-up">Check-ups</option>
+          <option value="Emergency">Emergency</option>
+          <option value="Surgery">Surgery</option>
+          <option value="Follow-up">Follow-ups</option>
+          <option value="Consultation">Consultations</option>
         </select>
+      </div>
+
+      {/* Filtering indicator */}
+      {isFiltering && (
+        <div className="text-center py-2 mb-4">
+          <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-blue-500 border-r-transparent"></div>
+          <span className="ml-2 text-sm text-gray-600">Filtering...</span>
+        </div>
+      )}
+
+      {/* Results counter */}
+      <div className="mb-4 text-sm text-gray-600">
+        Showing {filteredRecords.length} of {records.length} medical records
       </div>
 
       {/* Records Table */}
@@ -225,20 +372,34 @@ const MedicalRecords = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {records.length === 0 ? (
+            {filteredRecords.length === 0 ? (
               <tr>
                 <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
-                  No medical records found
+                  {(searchTerm || typeFilter !== 'all') 
+                    ? "No medical records match your search criteria" 
+                    : "No medical records found for the selected period"}
                 </td>
               </tr>
             ) : (
-              records.map((record) => (
+              filteredRecords.map((record) => (
                 <tr key={record._id}>
                   <td className="px-6 py-4 whitespace-nowrap">{record.patient?.name || 'N/A'}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {new Date(record.date).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">{record.type}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      record.type === 'Emergency' 
+                        ? 'bg-red-100 text-red-800'
+                        : record.type === 'Surgery'
+                        ? 'bg-purple-100 text-purple-800'
+                        : record.type === 'Check-up'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {record.type || 'General'}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">{record.diagnosis}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex space-x-2">
@@ -249,7 +410,10 @@ const MedicalRecords = () => {
                         <Eye size={18} className="mr-1" />
                         View
                       </button>
-                      <button className="text-green-600 hover:text-green-900 font-medium flex items-center">
+                      <button 
+                        onClick={() => handleDownloadRecord(record)}
+                        className="text-green-600 hover:text-green-900 font-medium flex items-center"
+                      >
                         <Download size={18} className="mr-1" />
                         Download
                       </button>
@@ -262,10 +426,10 @@ const MedicalRecords = () => {
         </table>
       </div>
 
-      {/* Record Details Modal - Your existing modal code */}
+      {/* Record Details Modal */}
       {selectedRecord && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold">Medical Record Details</h3>
               <button 
@@ -288,7 +452,19 @@ const MedicalRecords = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Type</label>
-                  <p className="mt-1">{selectedRecord.type}</p>
+                  <p className="mt-1">
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      selectedRecord.type === 'Emergency' 
+                        ? 'bg-red-100 text-red-800'
+                        : selectedRecord.type === 'Surgery'
+                        ? 'bg-purple-100 text-purple-800'
+                        : selectedRecord.type === 'Check-up'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {selectedRecord.type || 'General'}
+                    </span>
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Diagnosis</label>
@@ -297,16 +473,28 @@ const MedicalRecords = () => {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-gray-700">Symptoms</label>
+                <p className="mt-1 p-2 bg-gray-50 rounded">{selectedRecord.symptoms || 'None recorded'}</p>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-gray-700">Treatment</label>
-                <p className="mt-1">{selectedRecord.treatment}</p>
+                <p className="mt-1 p-2 bg-gray-50 rounded">{selectedRecord.treatment || 'None recorded'}</p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">Notes</label>
-                <p className="mt-1">{selectedRecord.notes}</p>
+                <p className="mt-1 p-2 bg-gray-50 rounded">{selectedRecord.notes || 'None recorded'}</p>
               </div>
 
               <div className="flex justify-end space-x-2 pt-4">
+                <button
+                  onClick={() => handleDownloadRecord(selectedRecord)}
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center"
+                >
+                  <Download size={18} className="mr-2" />
+                  Download
+                </button>
                 <button
                   onClick={() => setSelectedRecord(null)}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
