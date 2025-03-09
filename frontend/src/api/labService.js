@@ -252,6 +252,16 @@ removeTestOrder: async (testId) => {
       console.error('Error updating inventory item:', error);
       throw error;
     }
+  },
+
+  deleteInventoryItem: async (itemId) => {
+    try {
+      const response = await api.delete(`/lab/inventory/${itemId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting inventory item:', error);
+      throw error;
+    }
   }
 };
 
