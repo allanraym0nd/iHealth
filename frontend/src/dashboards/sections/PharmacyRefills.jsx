@@ -3,8 +3,40 @@ import { Search, Check, X, Eye, AlertCircle } from 'lucide-react';
 import pharmacyService from '../../api/pharmacyService';
 
 // Refill Request Details Modal
-const RefillRequestModal = ({ isOpen, onClose, refillRequest }) => {
+// Refill Request Details Modal
+const RefillRequestModal = ({ isOpen, onClose, refillRequest, onApprove, onReject }) => {
   if (!isOpen || !refillRequest) return null;
+
+  // Add the same getPatientName function inside the modal component
+  const getPatientName = (request) => {
+    // Try to get patient info from patient field
+    if (request.patient) {
+      if (typeof request.patient === 'object' && request.patient.name) {
+        return request.patient.name;
+      }
+      if (typeof request.patient === 'string') {
+        return 'Patient #' + request.patient.substring(0, 6);
+      }
+    }
+    
+    // If no patient, try to get from prescription
+    if (request.prescription && request.prescription.patient) {
+      if (typeof request.prescription.patient === 'object' && request.prescription.patient.name) {
+        return request.prescription.patient.name;
+      }
+    }
+    
+    // Default fallback
+    return 'Unknown Patient';
+  };
+
+  const handleApprove = () => {
+    onApprove(refillRequest._id);
+  };
+
+  const handleReject = () => {
+    onReject(refillRequest._id);
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -24,7 +56,7 @@ const RefillRequestModal = ({ isOpen, onClose, refillRequest }) => {
           <div>
             <label className="block text-sm font-medium text-gray-700">Patient Name</label>
             <p className="mt-1 text-gray-900">
-              {refillRequest.patient?.name || 'N/A'}
+              {getPatientName(refillRequest)}
             </p>
           </div>
           <div>
@@ -109,13 +141,13 @@ const RefillRequestModal = ({ isOpen, onClose, refillRequest }) => {
           {refillRequest.status === 'Pending' && (
             <>
               <button
-                onClick={() => {/* Handle Approve */}}
+                onClick={handleApprove}
                 className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
               >
                 Approve
               </button>
               <button
-                onClick={() => {/* Handle Reject */}}
+                onClick={handleReject}
                 className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
               >
                 Reject
@@ -152,11 +184,21 @@ const PharmacyRefills = () => {
       setIsLoading(true);
       const response = await pharmacyService.getRefillRequests();
       
+      // Log the response to debug
+      console.log('Raw refill requests data:', response);
+      
       // Ensure we have an array
       const refillData = Array.isArray(response.data) 
         ? response.data 
         : (response.data?.data || []);
-
+      
+      console.log('Processed refill data:', refillData);
+      
+      // For debugging: Log patient info from the first item
+      if (refillData.length > 0) {
+        console.log('First refill request patient:', refillData[0].patient);
+      }
+      
       setRefillRequests(refillData);
       setError(null);
     } catch (err) {
@@ -168,23 +210,71 @@ const PharmacyRefills = () => {
     }
   };
 
-  // Handle approve/reject refill request
-  const handleRefillRequestAction = async (requestId, status) => {
+  // Handle approve refill request
+  const handleApproveRequest = async (requestId) => {
     try {
-      await pharmacyService.processRefillRequest(requestId, { status });
+      await pharmacyService.processRefillRequest(requestId, { status: 'Approved' });
       fetchRefillRequests(); // Refresh the list
+      // Close the modal if it's the approved request
+      if (selectedRefillRequest && selectedRefillRequest._id === requestId) {
+        setSelectedRefillRequest(null);
+      }
     } catch (err) {
-      console.error(`Error ${status.toLowerCase()}ing refill request:`, err);
-      setError(`Failed to ${status.toLowerCase()} refill request`);
+      console.error('Error approving refill request:', err);
+      setError('Failed to approve refill request');
     }
   };
 
+  // Handle reject refill request
+  const handleRejectRequest = async (requestId) => {
+    try {
+      await pharmacyService.processRefillRequest(requestId, { status: 'Rejected' });
+      fetchRefillRequests(); // Refresh the list
+      // Close the modal if it's the rejected request
+      if (selectedRefillRequest && selectedRefillRequest._id === requestId) {
+        setSelectedRefillRequest(null);
+      }
+    } catch (err) {
+      console.error('Error rejecting refill request:', err);
+      setError('Failed to reject refill request');
+    }
+  };
+
+  // Get patient name function with fallback handling
+  // Add this improved getPatientName function
+const getPatientName = (request) => {
+  // Try to get patient info from patient field
+  if (request.patient) {
+    if (typeof request.patient === 'object' && request.patient.name) {
+      return request.patient.name;
+    }
+    if (typeof request.patient === 'string') {
+      return 'Patient #' + request.patient.substring(0, 6);
+    }
+  }
+  
+  // If no patient, try to get from prescription
+  if (request.prescription && request.prescription.patient) {
+    if (typeof request.prescription.patient === 'object' && request.prescription.patient.name) {
+      return request.prescription.patient.name;
+    }
+  }
+  
+  // Default fallback
+  return 'Unknown Patient';
+};
   // Filter refill requests
   const filteredRefillRequests = refillRequests.filter(request => {
     const matchesStatus = filterStatus === 'all' || request.status === filterStatus;
+    
+    // Use the getPatientName function for consistent display and searching
+    const patientName = getPatientName(request);
+    
     const matchesSearch = 
-      (request.patient?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      searchTerm === '' ||
+      patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (request.prescription?.medications?.[0]?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
     return matchesStatus && matchesSearch;
   });
 
@@ -236,7 +326,7 @@ const PharmacyRefills = () => {
                   <div>
                     <div className="flex items-center">
                       <h3 className="font-medium">
-                        {request.patient?.name || 'Unknown Patient'}
+                        {getPatientName(request)}
                       </h3>
                     </div>
                     <p className="text-sm text-gray-500 mt-1">
@@ -255,9 +345,28 @@ const PharmacyRefills = () => {
                       {request.status}
                     </span>
                     <div className="flex space-x-2">
+                      {request.status === 'Pending' && (
+                        <>
+                          <button 
+                            onClick={() => handleApproveRequest(request._id)}
+                            className="text-green-600 hover:text-green-900"
+                            title="Approve refill"
+                          >
+                            <Check size={20} />
+                          </button>
+                          <button 
+                            onClick={() => handleRejectRequest(request._id)}
+                            className="text-red-600 hover:text-red-900"
+                            title="Reject refill"
+                          >
+                            <X size={20} />
+                          </button>
+                        </>
+                      )}
                       <button 
                         onClick={() => setSelectedRefillRequest(request)}
                         className="text-blue-600 hover:text-blue-900"
+                        title="View details"
                       >
                         <Eye size={20} />
                       </button>
@@ -275,6 +384,8 @@ const PharmacyRefills = () => {
         isOpen={selectedRefillRequest !== null}
         onClose={() => setSelectedRefillRequest(null)}
         refillRequest={selectedRefillRequest}
+        onApprove={handleApproveRequest}
+        onReject={handleRejectRequest}
       />
     </div>
   );
