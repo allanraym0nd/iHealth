@@ -169,6 +169,7 @@ const InventoryManagement = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
+  const [showIncomplete, setShowIncomplete] = useState(false);
 
   useEffect(() => {
     fetchInventory();
@@ -178,6 +179,7 @@ const InventoryManagement = () => {
     try {
       setLoading(true);
       const response = await labService.getInventory();
+      console.log('Inventory data:', response.data);
       setInventory(response.data || []);
       setError(null);
     } catch (err) {
@@ -197,14 +199,34 @@ const InventoryManagement = () => {
     }
   };
 
-  const filteredInventory = inventory.filter(item => {
-    const matchesSearch = 
-      item.item.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.location?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCategory = filterCategory === 'all' || item.category === filterCategory;
+  const handleDeleteItem = async (itemId) => {
+    if (window.confirm('Are you sure you want to delete this item?')) {
+      try {
+        await labService.deleteInventoryItem(itemId);
+        fetchInventory(); // Refresh the list
+      } catch (error) {
+        console.error('Error deleting item:', error);
+        alert('Failed to delete item. Please try again.');
+      }
+    }
+  };
 
-    return matchesSearch && matchesCategory;
+  // Filter inventory based on search, category, and completeness
+  const filteredInventory = inventory.filter(item => {
+    // Filter by search term
+    const matchesSearch = 
+      (item.item && item.item.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.location && item.location.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    // Filter by category
+    const matchesCategory = filterCategory === 'all' || 
+      (item.category && item.category === filterCategory);
+
+    // Filter by completeness
+    const isComplete = item.category && item.location;
+    const matchesCompleteness = showIncomplete || isComplete;
+
+    return matchesSearch && matchesCategory && matchesCompleteness;
   });
 
   if (loading) return <div className="p-4">Loading inventory...</div>;
@@ -246,6 +268,26 @@ const InventoryManagement = () => {
           <option value="Glassware">Glassware</option>
           <option value="PPE">PPE</option>
         </select>
+        
+        {/* Checkbox to show/hide incomplete records */}
+        <div className="flex items-center">
+          <input
+            type="checkbox"
+            id="showIncomplete"
+            checked={showIncomplete}
+            onChange={(e) => setShowIncomplete(e.target.checked)}
+            className="h-4 w-4 text-blue-600 rounded"
+          />
+          <label htmlFor="showIncomplete" className="ml-2 text-sm text-gray-700">
+            Show incomplete records
+          </label>
+        </div>
+      </div>
+
+      {/* Results counter */}
+      <div className="mb-4 text-sm text-gray-600">
+        Showing {filteredInventory.length} of {inventory.length} inventory items
+        {!showIncomplete && <span> (incomplete records hidden)</span>}
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -265,14 +307,16 @@ const InventoryManagement = () => {
             {filteredInventory.length === 0 ? (
               <tr>
                 <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
-                  No inventory items found
+                  {searchTerm || filterCategory !== 'all' 
+                    ? "No inventory items match your search criteria" 
+                    : "No inventory items found"}
                 </td>
               </tr>
             ) : (
               filteredInventory.map((item) => (
-                <tr key={item._id}>
+                <tr key={item._id} className={!item.category || !item.location ? "bg-gray-50" : ""}>
                   <td className="px-6 py-4">{item.item}</td>
-                  <td className="px-6 py-4">{item.category}</td>
+                  <td className="px-6 py-4">{item.category || <span className="text-red-500">Missing</span>}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center space-x-2">
                       <input
@@ -285,7 +329,7 @@ const InventoryManagement = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4">{item.reorderLevel}</td>
-                  <td className="px-6 py-4">{item.location}</td>
+                  <td className="px-6 py-4">{item.location || <span className="text-red-500">Missing</span>}</td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 text-xs rounded-full ${
                       item.quantity <= item.reorderLevel
@@ -302,16 +346,24 @@ const InventoryManagement = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <button 
-                      onClick={() => alert('Create reorder request')}
-                      className={`text-sm ${
-                        item.quantity <= item.reorderLevel
-                          ? 'text-red-600 hover:text-red-800'
-                          : 'text-gray-600 hover:text-gray-800'
-                      }`}
-                    >
-                      Reorder
-                    </button>
+                    <div className="flex space-x-2">
+                      <button 
+                        onClick={() => alert('Create reorder request')}
+                        className={`text-sm ${
+                          item.quantity <= item.reorderLevel
+                            ? 'text-red-600 hover:text-red-800'
+                            : 'text-gray-600 hover:text-gray-800'
+                        }`}
+                      >
+                        Reorder
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteItem(item._id)}
+                        className="text-sm text-red-600 hover:text-red-800 ml-3"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
