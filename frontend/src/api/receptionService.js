@@ -149,6 +149,17 @@ getAppointmentAnalytics: async (period = 'day') => {
     console.error('Error fetching appointment analytics:', error);
     throw error;
   }
+},
+
+// Delete a patient
+deletePatient: async (patientId) => {
+  try {
+    const response = await api.delete(`/reception/patients/${patientId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting patient:', error);
+    throw error;
+  }
 }
 
 
