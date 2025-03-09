@@ -16,6 +16,11 @@ const medicalRecordSchema = new mongoose.Schema({
     default: Date.now,
     required: true
   },
+  type: {
+    type: String,
+    enum: ['General', 'Check-up', 'Emergency', 'Surgery', 'Follow-up', 'Consultation'],
+    default: 'General'
+  },
   diagnosis: {
     type: String,
     required: true
@@ -26,10 +31,6 @@ const medicalRecordSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Prescription'
   }],
- // testResults: [{
-  //  type: mongoose.Schema.Types.ObjectId,
- //   ref: 'TestResult'
-//  }],
   notes: String,
   attachments: [String]
 }, { timestamps: true });
