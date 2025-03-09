@@ -31,6 +31,7 @@ router.get('/inventory', auth, labController.getInventory);
 router.post('/inventory', auth, labController.addInventoryItem);
 router.put('/inventory/:id', auth, labController.updateInventoryItem);
 router.put('/inventory', auth, inventoryValidation, validate, labController.updateInventory);
+router.delete('/inventory/:id', labController.deleteInventoryItem);
 
 // Lists routes
 router.get('/patients-list', auth, labController.getPatientsList);
