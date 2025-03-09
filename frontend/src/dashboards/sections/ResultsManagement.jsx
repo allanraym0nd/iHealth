@@ -210,10 +210,48 @@ const ResultsManagement = (props) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filteredResults, setFilteredResults] = useState([]);
+  const [showIncomplete, setShowIncomplete] = useState(false); // Toggle for showing/hiding incomplete records
 
   useEffect(() => {
     fetchResults();
   }, []);
+
+  // Filter results whenever data or filters change
+  useEffect(() => {
+    if (results.length > 0) {
+      // First, filter out incomplete records unless showIncomplete is true
+      let filtered = results;
+      
+      if (!showIncomplete) {
+        filtered = results.filter(result => 
+          result.patient?.name && // Has patient name
+          result.testType && // Has test type
+          result.value && // Has result value
+          result.unit && // Has unit
+          result.referenceRange && // Has reference range
+          result.interpretation // Has interpretation
+        );
+      }
+      
+      // Then apply search and status filters
+      filtered = filtered.filter(result => {
+        // Search filter
+        const matchesSearch = searchTerm === '' || 
+          (result.patient?.name && result.patient.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (result.testType && result.testType.toLowerCase().includes(searchTerm.toLowerCase()));
+        
+        // Status filter
+        const matchesStatus = filterStatus === 'all' || result.interpretation === filterStatus;
+        
+        return matchesSearch && matchesStatus;
+      });
+      
+      setFilteredResults(filtered);
+    } else {
+      setFilteredResults([]);
+    }
+  }, [results, searchTerm, filterStatus, showIncomplete]);
 
   const fetchResults = async () => {
     try {
@@ -245,16 +283,6 @@ const ResultsManagement = (props) => {
     }
   };
 
-  const filteredResults = results.filter(result => {
-    const matchesSearch = 
-      result.patient?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      result.testType?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = filterStatus === 'all' || result.interpretation === filterStatus;
-
-    return matchesSearch && matchesStatus;
-  });
-
   if (loading) return <div className="p-4">Loading results...</div>;
   if (error) return <div className="p-4 text-red-500">{error}</div>;
 
@@ -276,7 +304,7 @@ const ResultsManagement = (props) => {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <input
             type="text"
-            placeholder="Search results..."
+            placeholder="Search by patient or test type..."
             className="w-full pl-10 pr-4 py-2 border rounded-lg"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -293,6 +321,28 @@ const ResultsManagement = (props) => {
           <option value="Low">Low</option>
           <option value="Inconclusive">Inconclusive</option>
         </select>
+        
+        {/* Toggle for incomplete records */}
+        <div className="flex items-center">
+          <input
+            type="checkbox"
+            id="showIncomplete"
+            checked={showIncomplete}
+            onChange={(e) => setShowIncomplete(e.target.checked)}
+            className="h-4 w-4 text-blue-600"
+          />
+          <label htmlFor="showIncomplete" className="ml-2 text-sm text-gray-700">
+            Show incomplete results
+          </label>
+        </div>
+      </div>
+
+      {/* Results summary */}
+      <div className="mb-4 text-sm text-gray-600">
+        Showing {filteredResults.length} of {results.length} test results
+        {searchTerm && <span> matching "{searchTerm}"</span>}
+        {filterStatus !== 'all' && <span> with interpretation "{filterStatus}"</span>}
+        {!showIncomplete && <span> (incomplete results hidden)</span>}
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -308,36 +358,52 @@ const ResultsManagement = (props) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {filteredResults.map((result) => (
-              <tr key={result._id}>
-                <td className="px-6 py-4">{result.patient?.name || 'Unknown Patient'}</td>
-                <td className="px-6 py-4">{result.testType}</td>
-                <td className="px-6 py-4">
-                  {result.value} {result.unit}
-                </td>
-                <td className="px-6 py-4">{result.referenceRange}</td>
-                <td className="px-6 py-4">
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    result.interpretation === 'Normal'
-                      ? 'bg-green-100 text-green-800'
-                      : result.interpretation === 'High'
-                      ? 'bg-red-100 text-red-800'
-                      : result.interpretation === 'Low'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {result.interpretation}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  {result.isCritical && (
-                    <span className="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">
-                      CRITICAL
-                    </span>
-                  )}
+            {filteredResults.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                  {searchTerm || filterStatus !== 'all' 
+                    ? "No test results match your search criteria" 
+                    : !showIncomplete
+                    ? "No complete test results found. Check 'Show incomplete results' to see all records"
+                    : "No test results found"}
                 </td>
               </tr>
-            ))}
+            ) : (
+              filteredResults.map((result) => (
+                <tr key={result._id}>
+                  <td className="px-6 py-4">{result.patient?.name || 'Unknown Patient'}</td>
+                  <td className="px-6 py-4">{result.testType || 'N/A'}</td>
+                  <td className="px-6 py-4">
+                    {result.value ? `${result.value} ${result.unit || ''}` : 'Not available'}
+                  </td>
+                  <td className="px-6 py-4">{result.referenceRange || 'Not specified'}</td>
+                  <td className="px-6 py-4">
+                    {result.interpretation ? (
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        result.interpretation === 'Normal'
+                          ? 'bg-green-100 text-green-800'
+                          : result.interpretation === 'High'
+                          ? 'bg-red-100 text-red-800'
+                          : result.interpretation === 'Low'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {result.interpretation}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">Pending</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    {result.isCritical && (
+                      <span className="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">
+                        CRITICAL
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -345,10 +411,11 @@ const ResultsManagement = (props) => {
       <AddResultModal 
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
-        onResultAdded={handleResultAdded} // Use our new function instead of just fetchResults
+        onResultAdded={handleResultAdded}
       />
     </div>
   );
+
 };
 
 export default ResultsManagement;
