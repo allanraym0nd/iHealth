@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Plus, Edit, Trash2 } from 'lucide-react';
 import doctorService from '../../api/doctorService';
 
-const AddPatientModal = ({ isOpen, onClose }) => {
+const AddPatientModal = ({ isOpen, onClose, onPatientAdded }) => {
   const [formData, setFormData] = useState({
     name: '',
     age: '',
@@ -50,6 +50,9 @@ const AddPatientModal = ({ isOpen, onClose }) => {
         },
         status: 'active'
       });
+      if (onPatientAdded) {
+        onPatientAdded();
+      }
       onClose();
     } catch (error) {
       setError(error.response?.data?.message || 'Failed to add patient');
@@ -160,7 +163,9 @@ const AddPatientModal = ({ isOpen, onClose }) => {
 
 const PatientManagement = () => {
   const [patients, setPatients] = useState([]);
+  const [filteredPatients, setFilteredPatients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isFiltering, setIsFiltering] = useState(false);
   const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState('');
@@ -170,11 +175,43 @@ const PatientManagement = () => {
     fetchPatients();
   }, []);
 
+  // Filter patients when search term or status filter changes
+  useEffect(() => {
+    if (patients.length > 0) {
+      setIsFiltering(true);
+      
+      // Use a small timeout to avoid flickering for fast filters
+      const filterTimer = setTimeout(() => {
+        const filtered = patients.filter(patient => {
+          // Filter by search term
+          const matchesSearch = searchTerm === '' || 
+            (patient.name && patient.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (patient.contact?.phone && patient.contact.phone.includes(searchTerm)) ||
+            (patient.contact?.email && patient.contact.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (patient.age && patient.age.toString().includes(searchTerm));
+          
+          // Filter by status
+          const matchesStatus = filterStatus === '' || patient.status === filterStatus;
+          
+          return matchesSearch && matchesStatus;
+        });
+        
+        setFilteredPatients(filtered);
+        setIsFiltering(false);
+      }, 200);
+      
+      return () => clearTimeout(filterTimer);
+    } else {
+      setFilteredPatients([]);
+    }
+  }, [searchTerm, filterStatus, patients]);
+
   const fetchPatients = async () => {
     try {
       setLoading(true);
       const response = await doctorService.getPatients();
       setPatients(response.data || []);
+      setFilteredPatients(response.data || []); // Initialize filtered patients
       setError(null);
     } catch (err) {
       console.error('Error fetching patients:', err);
@@ -209,6 +246,7 @@ const PatientManagement = () => {
             type="text"
             placeholder="Search patients..."
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+            value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
@@ -221,6 +259,19 @@ const PatientManagement = () => {
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
+      </div>
+
+      {/* Filtering indicator */}
+      {isFiltering && (
+        <div className="text-center py-2 mb-4">
+          <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-blue-500 border-r-transparent"></div>
+          <span className="ml-2 text-sm text-gray-600">Filtering...</span>
+        </div>
+      )}
+
+      {/* Results counter */}
+      <div className="mb-4 text-sm text-gray-600">
+        Showing {filteredPatients.length} of {patients.length} patients
       </div>
 
       {/* Patients Table */}
@@ -238,14 +289,14 @@ const PatientManagement = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {patients.length === 0 ? (
+            {filteredPatients.length === 0 ? (
               <tr>
                 <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
-                  No patients found
+                  {searchTerm || filterStatus ? "No patients match your search criteria" : "No patients found"}
                 </td>
               </tr>
             ) : (
-              patients.map((patient) => (
+              filteredPatients.map((patient) => (
                 <tr key={patient._id}>
                   <td className="px-6 py-4 whitespace-nowrap">{patient.name || 'N/A'}</td>
                   <td className="px-6 py-4 whitespace-nowrap">{patient._id?.substring(0, 6) || 'N/A'}</td>
@@ -255,7 +306,11 @@ const PatientManagement = () => {
                     {patient.lastVisit ? new Date(patient.lastVisit).toLocaleDateString() : 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 py-1 text-sm text-green-800 bg-green-100 rounded-full">
+                    <span className={`px-2 py-1 text-sm rounded-full ${
+                      patient.status === 'active' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
                       {patient.status || 'Active'}
                     </span>
                   </td>
@@ -279,6 +334,7 @@ const PatientManagement = () => {
       <AddPatientModal 
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
+        onPatientAdded={fetchPatients}
       />
     </div>
   );
