@@ -56,22 +56,34 @@ const pharmacyController = {
       const pharmacy = await Pharmacy.findOne();
       
       // Validate required fields
-      const { prescription, pharmacyLocation, notes } = req.body;
-  
+      const { prescription, pharmacyLocation, notes, patient } = req.body;
+      
+      // Ensure we have a patient ID - either from the body or the logged-in user
+      const patientId = patient || req.user.id;
+      
+      if (!patientId) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Patient information is required for a refill request'
+        });
+      }
+      
       // Create refill request
       const newRefillRequest = {
         prescription: prescription,
-        patient: req.user.id, // Assuming user ID is available from auth middleware
+        patient: patientId,
         pharmacyLocation: pharmacyLocation || '',
         notes: notes || '',
         status: 'Pending',
         requestDate: new Date()
       };
-  
+      
+      console.log('Creating refill request with data:', newRefillRequest);
+      
       // Add to pharmacy's refill requests
       pharmacy.refillRequests.push(newRefillRequest);
       await pharmacy.save();
-  
+      
       res.status(201).json({
         status: 'success',
         message: 'Refill request created successfully',
@@ -317,25 +329,57 @@ deleteInventoryItem: async (req, res, next) => {
   getRefillRequests: async (req, res, next) => {
     try {
       // Find pharmacy or create if not exists
-      let pharmacy = await Pharmacy.findOne()
-        .populate({
-          path: 'refillRequests.prescription',
-          populate: [
-            { path: 'patient', select: 'name' },
-            { path: 'doctor', select: 'name' }
-          ]
-        })
-        .populate('refillRequests.patient', 'name');
-  
+      let pharmacy = await Pharmacy.findOne();
+      
       // If no pharmacy exists, create one
       if (!pharmacy) {
         pharmacy = new Pharmacy();
         await pharmacy.save();
       }
-  
+      
+      // Populate the requests with patient and prescription data
+      await Pharmacy.populate(pharmacy, {
+        path: 'refillRequests.prescription',
+        populate: [
+          { path: 'patient', select: 'name' },
+          { path: 'doctor', select: 'name' }
+        ]
+      });
+      
+      // Populate the patient directly on the refill request
+      await Pharmacy.populate(pharmacy, {
+        path: 'refillRequests.patient',
+        select: 'name'
+      });
+      
+      // Create a more complete response with helpful debug info
+      const requests = pharmacy.refillRequests || [];
+      
+      // Add a better name field for display
+      const enhancedRequests = requests.map(request => {
+        let patientName = 'Unknown Patient';
+        
+        // Try to get name from patient field
+        if (request.patient) {
+          if (typeof request.patient === 'object' && request.patient.name) {
+            patientName = request.patient.name;
+          }
+        }
+        // If still unknown, try from prescription
+        else if (request.prescription && request.prescription.patient && request.prescription.patient.name) {
+          patientName = request.prescription.patient.name;
+        }
+        
+        return {
+          ...request.toObject(),
+          displayName: patientName
+        };
+      });
+      
       res.json({
         status: 'success',
-        data: pharmacy.refillRequests || []
+        data: requests,
+        enhancedData: enhancedRequests
       });
     } catch (error) {
       console.error('Detailed error in getRefillRequests:', error);
