@@ -14,8 +14,6 @@ const CreateInvoiceModal = ({ isOpen, onClose, onCreateSuccess }) => {
  });
 
  // Fetch patients on modal open
-// In CreateInvoiceModal
-// In CreateInvoiceModal component
 useEffect(() => {
   if (isOpen) {
     const fetchPatients = async () => {
@@ -226,8 +224,8 @@ useEffect(() => {
  );
 };
 
-// Invoice Modal Component (Added to fix the error)
-const InvoiceModal = ({ isOpen, onClose, invoice }) => {
+// Invoice Modal Component
+const InvoiceModal = ({ isOpen, onClose, invoice, onDownload, onPrint }) => {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('Credit Card');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
@@ -368,10 +366,16 @@ const InvoiceModal = ({ isOpen, onClose, invoice }) => {
             >
               Close
             </button>
-            <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center">
+            <button 
+              onClick={() => onDownload(invoice)}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center"
+            >
               <Download size={16} className="mr-1" /> Download
             </button>
-            <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center">
+            <button 
+              onClick={() => onPrint(invoice)}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center"
+            >
               <Printer size={16} className="mr-1" /> Print
             </button>
           </div>
@@ -417,6 +421,142 @@ const BillingInvoices = () => {
    fetchInvoices(); // Refresh the invoices list
    alert('Invoice created successfully!');
  };
+
+ // Download invoice function
+ const handleDownloadInvoice = useCallback((invoice) => {
+   try {
+     // Create the invoice content as text
+     const invoiceContent = `
+INVOICE
+
+Invoice #: INV-${invoice._id.toString().slice(-8)}
+Date: ${new Date(invoice.date).toLocaleDateString()}
+-----------------------------------------
+
+Patient: ${invoice.patientName}
+Status: ${invoice.status}
+
+ITEMS:
+${invoice.items.map(item => `${item.service} - ${item.description || 'N/A'}: $${item.amount.toFixed(2)}`).join('\n')}
+
+-----------------------------------------
+TOTAL: $${invoice.totalAmount.toFixed(2)}
+
+Thank you for your business!
+`;
+
+     // Create a blob with the content
+     const blob = new Blob([invoiceContent], { type: 'text/plain' });
+     
+     // Create a download link and trigger the download
+     const url = URL.createObjectURL(blob);
+     const a = document.createElement('a');
+     a.href = url;
+     a.download = `Invoice-${invoice._id.toString().slice(-8)}.txt`;
+     document.body.appendChild(a);
+     a.click();
+     
+     // Clean up
+     document.body.removeChild(a);
+     URL.revokeObjectURL(url);
+   } catch (error) {
+     console.error('Error downloading invoice:', error);
+     alert('Failed to download invoice');
+   }
+ }, []);
+
+ // Print invoice function
+ const handlePrintInvoice = useCallback((invoice) => {
+   try {
+     // Create a new window for printing
+     const printWindow = window.open('', '_blank');
+     
+     // Create the HTML content for printing
+     const htmlContent = `
+       <!DOCTYPE html>
+       <html>
+       <head>
+         <title>Invoice ${invoice._id.toString().slice(-8)}</title>
+         <style>
+           body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+           .invoice-header { margin-bottom: 20px; }
+           .invoice-title { font-size: 24px; font-weight: bold; }
+           .invoice-details { display: flex; justify-content: space-between; margin-bottom: 20px; }
+           .invoice-details div { flex: 1; }
+           table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+           th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+           th { background-color: #f2f2f2; }
+           .total-row { font-weight: bold; }
+           .footer { margin-top: 40px; text-align: center; color: #666; }
+           @media print {
+             body { padding: 0; }
+             button { display: none; }
+           }
+         </style>
+       </head>
+       <body>
+         <div class="invoice-header">
+           <div class="invoice-title">INVOICE</div>
+           <p>Invoice #: INV-${invoice._id.toString().slice(-8)}</p>
+           <p>Date: ${new Date(invoice.date).toLocaleDateString()}</p>
+         </div>
+         
+         <div class="invoice-details">
+           <div>
+             <strong>Patient:</strong>
+             <p>${invoice.patientName}</p>
+           </div>
+           <div>
+             <strong>Status:</strong>
+             <p>${invoice.status}</p>
+           </div>
+         </div>
+         
+         <table>
+           <thead>
+             <tr>
+               <th>Service</th>
+               <th>Description</th>
+               <th style="text-align: right;">Amount</th>
+             </tr>
+           </thead>
+           <tbody>
+             ${invoice.items.map(item => `
+               <tr>
+                 <td>${item.service}</td>
+                 <td>${item.description || 'N/A'}</td>
+                 <td style="text-align: right;">$${item.amount.toFixed(2)}</td>
+               </tr>
+             `).join('')}
+             <tr class="total-row">
+               <td colspan="2" style="text-align: right;">Total</td>
+               <td style="text-align: right;">$${invoice.totalAmount.toFixed(2)}</td>
+             </tr>
+           </tbody>
+         </table>
+         
+         <div class="footer">
+           <p>Thank you for your business!</p>
+         </div>
+         
+         <script>
+           // Auto-print when loaded
+           window.onload = function() {
+             window.print();
+           }
+         </script>
+       </body>
+       </html>
+     `;
+     
+     // Write the HTML content to the new window
+     printWindow.document.write(htmlContent);
+     printWindow.document.close();
+   } catch (error) {
+     console.error('Error printing invoice:', error);
+     alert('Failed to print invoice');
+   }
+ }, []);
 
  // Filter invoices based on status and search term
  const filteredInvoices = invoices.filter(invoice => {
@@ -469,61 +609,72 @@ const BillingInvoices = () => {
 
      {/* Invoices List */}
      <div className="bg-white rounded-lg shadow overflow-hidden">
-       <table className="min-w-full divide-y divide-gray-200">
-         <thead className="bg-gray-50">
-           <tr>
-             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice #</th>
-             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
-             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-           </tr>
-         </thead>
-         <tbody className="bg-white divide-y divide-gray-200">
-           {filteredInvoices.length > 0 ? (
-             filteredInvoices.map((invoice) => (
-               <tr key={invoice._id} className="hover:bg-gray-50">
-                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">INV-{invoice._id.toString().slice(-8)}</td>
-                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{invoice.patientName}</td>
-                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(invoice.date).toLocaleDateString()}</td>
-                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">${invoice.totalAmount.toFixed(2)}</td>
-                 <td className="px-6 py-4 whitespace-nowrap">
-                   <span className={`px-2 py-1 text-xs rounded-full ${
-                     invoice.status.toLowerCase() === 'paid' 
-                       ? 'bg-green-100 text-green-800'
-                       : invoice.status.toLowerCase() === 'overdue'
-                       ? 'bg-red-100 text-red-800'
-                       : 'bg-yellow-100 text-yellow-800'
-                   }`}>
-                     {invoice.status}
-                   </span>
-                 </td>
-                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                   <div className="flex justify-end space-x-2">
-                     <button 
-                       onClick={() => setSelectedInvoice(invoice)}
-                       className="text-blue-600 hover:text-blue-900"
-                     >
-                       <Eye size={18} />
-                     </button>
-                     <button className="text-gray-600 hover:text-gray-900">
-                       <Download size={18} />
-                     </button>
-                     <button className="text-gray-600 hover:text-gray-900">
-                       <Printer size={18} />
-                     </button>
-                   </div>
-                 </td>
-               </tr>
-             ))
-           ) : (
+       <div className="overflow-x-auto">
+         <table className="min-w-full divide-y divide-gray-200">
+           <thead className="bg-gray-50">
              <tr>
-               <td colSpan="6" className="px-6 py-4 text-center text-gray-500">No invoices found</td>
+               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice #</th>
+               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
+               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
              </tr>
-           )}
-         </tbody>
-       </table>
+           </thead>
+           <tbody className="bg-white divide-y divide-gray-200">
+             {filteredInvoices.length > 0 ? (
+               filteredInvoices.map((invoice) => (
+                 <tr key={invoice._id} className="hover:bg-gray-50">
+                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">INV-{invoice._id.toString().slice(-8)}</td>
+                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{invoice.patientName}</td>
+                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(invoice.date).toLocaleDateString()}</td>
+                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">${invoice.totalAmount.toFixed(2)}</td>
+                   <td className="px-6 py-4 whitespace-nowrap">
+                     <span className={`px-2 py-1 text-xs rounded-full ${
+                       invoice.status.toLowerCase() === 'paid' 
+                         ? 'bg-green-100 text-green-800'
+                         : invoice.status.toLowerCase() === 'overdue'
+                         ? 'bg-red-100 text-red-800'
+                         : 'bg-yellow-100 text-yellow-800'
+                     }`}>
+                       {invoice.status}
+                     </span>
+                   </td>
+                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                     <div className="flex justify-end space-x-2">
+                       <button 
+                         onClick={() => setSelectedInvoice(invoice)}
+                         className="text-blue-600 hover:text-blue-900"
+                         title="View invoice details"
+                       >
+                         <Eye size={18} />
+                       </button>
+                       <button 
+                         onClick={() => handleDownloadInvoice(invoice)}
+                         className="text-gray-600 hover:text-gray-900"
+                         title="Download invoice"
+                       >
+                         <Download size={18} />
+                       </button>
+                       <button 
+                         onClick={() => handlePrintInvoice(invoice)}
+                         className="text-gray-600 hover:text-gray-900"
+                         title="Print invoice"
+                       >
+                         <Printer size={18} />
+                       </button>
+                     </div>
+                   </td>
+                 </tr>
+               ))
+             ) : (
+               <tr>
+                 <td colSpan="6" className="px-6 py-4 text-center text-gray-500">No invoices found</td>
+               </tr>
+             )}
+           </tbody>
+         </table>
+       </div>
      </div>
 
      {/* Invoice Details Modal */}
@@ -531,6 +682,8 @@ const BillingInvoices = () => {
        isOpen={selectedInvoice !== null}
        onClose={() => setSelectedInvoice(null)}
        invoice={selectedInvoice}
+       onDownload={handleDownloadInvoice}
+       onPrint={handlePrintInvoice}
      />
 
      {/* Create Invoice Modal */}
