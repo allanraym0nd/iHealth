@@ -125,17 +125,26 @@ getAppointments: async () => {
 
   requestRefill: async (prescriptionId, refillData) => {
     try {
-      const response = await api.post('/pharmacy/refill-requests', {
+      // Get the current user/patient ID from localStorage or sessionStorage
+      const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+      
+      // Create the payload with patient ID explicitly included
+      const payload = {
         prescription: prescriptionId,
+        patient: userId, // Add this line to include the patient ID
         ...refillData
-      });
+      };
+      
+      console.log('Sending refill request with payload:', payload);
+      
+      const response = await api.post('/pharmacy/refill-requests', payload);
       return response.data;
     } catch (error) {
       console.error('Error requesting refill:', error);
       throw error;
     }
   },
-
+  
   getRefillRequests: async () => {
     try {
       const response = await api.get('/pharmacy/patient-refill-requests');
