@@ -49,6 +49,9 @@ const labSchema = new mongoose.Schema({
   inventory: [{
     item: String,
     quantity: Number,
+    unit: String,
+    category: String,
+    location: String,
     reorderLevel: Number,
     lastRestocked: Date
   }],
