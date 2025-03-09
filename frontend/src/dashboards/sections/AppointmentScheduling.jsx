@@ -231,25 +231,60 @@ const RescheduleModal = ({ isOpen, onClose, appointment, onReschedule }) => {
 
 const AppointmentScheduling = () => {
   const [appointments, setAppointments] = useState([]);
+  const [filteredAppointments, setFilteredAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isFiltering, setIsFiltering] = useState(false);
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState(null);
   const [selectedAppointmentForReschedule, setSelectedAppointmentForReschedule] = useState(null);
   
-  // Add date filter state
+  // Filter states
   const [dateFilter, setDateFilter] = useState('today');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
  
   useEffect(() => {
     fetchAppointments();
-  }, [dateFilter]); // Add dateFilter to dependency array
+  }, [dateFilter]); // Refresh when date filter changes
+  
+  // Filter appointments when search term or status filter changes
+  useEffect(() => {
+    if (appointments.length > 0) {
+      setIsFiltering(true);
+      
+      // Use a small timeout to avoid flickering for fast filters
+      const filterTimer = setTimeout(() => {
+        const filtered = appointments.filter(appointment => {
+          // Filter by search term
+          const matchesSearch = searchTerm === '' || 
+            (appointment.patient?.name && appointment.patient.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (appointment.type && appointment.type.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (appointment.notes && appointment.notes.toLowerCase().includes(searchTerm.toLowerCase()));
+          
+          // Filter by status
+          const matchesStatus = statusFilter === 'all' || appointment.status === statusFilter;
+          
+          return matchesSearch && matchesStatus;
+        });
+        
+        setFilteredAppointments(filtered);
+        setIsFiltering(false);
+      }, 200);
+      
+      return () => clearTimeout(filterTimer);
+    } else {
+      setFilteredAppointments([]);
+    }
+  }, [searchTerm, statusFilter, appointments]);
  
   const fetchAppointments = async () => {
     try {
       setLoading(true);
       const response = await doctorService.getAppointments(dateFilter);
       setAppointments(response.data || []);
+      setFilteredAppointments(response.data || []);
       setError(null);
     } catch (err) {
       console.error('Error fetching appointments:', err);
@@ -259,202 +294,231 @@ const AppointmentScheduling = () => {
     }
   };
  
+  const handleEdit = async (appointmentId) => {
+    setEditingAppointment(appointments.find(apt => apt._id === appointmentId));
+    setIsModalOpen(true);
+  };
 
- const handleEdit = async (appointmentId) => {
-   setEditingAppointment(appointments.find(apt => apt._id === appointmentId));
-   setIsModalOpen(true);
- };
-
- const handleCancel = async (appointmentId) => {
-   if (window.confirm('Are you sure you want to cancel this appointment?')) {
-     try {
-       await doctorService.cancelAppointment(appointmentId);
-       fetchAppointments();
-     } catch (error) {
-       console.error('Error cancelling appointment:', error);
-     }
-   }
- };
-
- const handleCompleteAppointment = async (appointmentId) => {
-  try {
-    const confirmed = window.confirm('Are you sure you want to mark this appointment as completed?');
-    
-    if (confirmed) {
-      setLoading(true);
-      await doctorService.completeAppointment(appointmentId);
-      
-      fetchAppointments();
-      
-      alert('Appointment marked as completed');
+  const handleCancel = async (appointmentId) => {
+    if (window.confirm('Are you sure you want to cancel this appointment?')) {
+      try {
+        await doctorService.cancelAppointment(appointmentId);
+        fetchAppointments();
+      } catch (error) {
+        console.error('Error cancelling appointment:', error);
+      }
     }
-  } catch (error) {
-    console.error('Failed to complete appointment:', error);
-    
-    alert(
-      error.response?.data?.message || 
-      'Failed to complete appointment. Please try again.'
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
- if (loading) return <div className="p-4">Loading appointments...</div>;
- if (error) return <div className="p-4 text-red-500">{error}</div>;
+  const handleCompleteAppointment = async (appointmentId) => {
+    try {
+      const confirmed = window.confirm('Are you sure you want to mark this appointment as completed?');
+      
+      if (confirmed) {
+        setLoading(true);
+        await doctorService.completeAppointment(appointmentId);
+        
+        fetchAppointments();
+        
+        alert('Appointment marked as completed');
+      }
+    } catch (error) {
+      console.error('Failed to complete appointment:', error);
+      
+      alert(
+        error.response?.data?.message || 
+        'Failed to complete appointment. Please try again.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
- return (
-  <div className="p-6">
-    <div className="flex justify-between items-center mb-6">
-      <h2 className="text-2xl font-bold text-gray-800">Appointments</h2>
-      <button 
-        onClick={() => setIsModalOpen(true)}
-        className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-      >
-        <Plus size={20} className="mr-2" />
-        New Appointment
-      </button>
-    </div>
+  // Helper function to format date
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
 
-    {/* Date Filter Buttons */}
-    <div className="flex space-x-2 mb-4">
-      <button 
-        onClick={() => setDateFilter('today')}
-        className={`px-3 py-1 rounded ${dateFilter === 'today' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-      >
-        Today
-      </button>
-      <button 
-        onClick={() => setDateFilter('week')}
-        className={`px-3 py-1 rounded ${dateFilter === 'week' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-      >
-        This Week
-      </button>
-      <button 
-        onClick={() => setDateFilter('all')}
-        className={`px-3 py-1 rounded ${dateFilter === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-      >
-        All Appointments
-      </button>
-    </div>
+  if (loading && !isFiltering) return <div className="p-4">Loading appointments...</div>;
+  if (error) return <div className="p-4 text-red-500">{error}</div>;
 
-    <div className="flex gap-4 mb-6">
-      <div className="flex-1 relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-        <input
-          type="text"
-          placeholder="Search appointments..."
-          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+  return (
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">Appointments</h2>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+        >
+          <Plus size={20} className="mr-2" />
+          New Appointment
+        </button>
       </div>
-      <select className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-        <option value="all">All Status</option>
-        <option value="scheduled">Scheduled</option>
-        <option value="completed">Completed</option>
-        <option value="cancelled">Cancelled</option>
-      </select>
-    </div>
 
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      <table className="w-full">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {appointments.length === 0 ? (
+      {/* Date Filter Buttons */}
+      <div className="flex space-x-2 mb-4">
+        <button 
+          onClick={() => setDateFilter('today')}
+          className={`px-3 py-1 rounded ${dateFilter === 'today' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+        >
+          Today
+        </button>
+        <button 
+          onClick={() => setDateFilter('week')}
+          className={`px-3 py-1 rounded ${dateFilter === 'week' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+        >
+          This Week
+        </button>
+        <button 
+          onClick={() => setDateFilter('all')}
+          className={`px-3 py-1 rounded ${dateFilter === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+        >
+          All Appointments
+        </button>
+      </div>
+
+      {/* Search and Filter */}
+      <div className="flex gap-4 mb-6">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+          <input
+            type="text"
+            placeholder="Search appointments..."
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <select 
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="all">All Status</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+
+      {/* Filtering indicator */}
+      {isFiltering && (
+        <div className="text-center py-2 mb-4">
+          <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-blue-500 border-r-transparent"></div>
+          <span className="ml-2 text-sm text-gray-600">Filtering...</span>
+        </div>
+      )}
+
+      {/* Results counter */}
+      <div className="mb-4 text-sm text-gray-600">
+        Showing {filteredAppointments.length} of {appointments.length} appointments
+      </div>
+
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50">
             <tr>
-              <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
-                No appointments found
-              </td>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
-          ) : (
-            appointments.map((appointment) => (
-              <tr key={appointment._id}>
-                <td className="px-6 py-4 whitespace-nowrap">{appointment.patient?.name || 'N/A'}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {new Date(appointment.date).toLocaleDateString()}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">{appointment.time}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{appointment.type}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 text-sm rounded-full ${
-                    appointment.status === 'completed' 
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {appointment.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex space-x-2">
-                    <button 
-                      onClick={() => handleEdit(appointment._id)}
-                      className="text-blue-600 hover:text-blue-900 font-medium" 
-                    >
-                      Edit
-                    </button>
-                    <button 
-                      onClick={() => handleCancel(appointment._id)}
-                      className="text-red-600 hover:text-red-900 font-medium"
-                    >
-                      Cancel
-                    </button>
-                    {appointment.status === 'scheduled' && (
-                      <>
-                        <button 
-                          onClick={() => handleCompleteAppointment(appointment._id)}
-                          className="text-green-600 hover:text-green-900 font-medium"
-                        >
-                          Complete
-                        </button>
-                        <button 
-                          onClick={() => {
-                            setSelectedAppointmentForReschedule(appointment);
-                            setIsRescheduleModalOpen(true);
-                          }}
-                          className="text-yellow-600 hover:text-yellow-900 font-medium"
-                        >
-                          Reschedule
-                        </button>
-                      </>
-                    )}
-                  </div>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredAppointments.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                  {(searchTerm || statusFilter !== 'all') 
+                    ? "No appointments match your search criteria" 
+                    : "No appointments found for the selected period"}
                 </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              filteredAppointments.map((appointment) => (
+                <tr key={appointment._id}>
+                  <td className="px-6 py-4 whitespace-nowrap">{appointment.patient?.name || 'N/A'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {formatDate(appointment.date)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">{appointment.time}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{appointment.type}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 text-sm rounded-full ${
+                      appointment.status === 'completed' 
+                        ? 'bg-green-100 text-green-800'
+                        : appointment.status === 'cancelled'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {appointment.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex space-x-2">
+                      <button 
+                        onClick={() => handleEdit(appointment._id)}
+                        className="text-blue-600 hover:text-blue-900 font-medium" 
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        onClick={() => handleCancel(appointment._id)}
+                        className="text-red-600 hover:text-red-900 font-medium"
+                      >
+                        Cancel
+                      </button>
+                      {appointment.status === 'scheduled' && (
+                        <>
+                          <button 
+                            onClick={() => handleCompleteAppointment(appointment._id)}
+                            className="text-green-600 hover:text-green-900 font-medium"
+                          >
+                            Complete
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setSelectedAppointmentForReschedule(appointment);
+                              setIsRescheduleModalOpen(true);
+                            }}
+                            className="text-yellow-600 hover:text-yellow-900 font-medium"
+                          >
+                            Reschedule
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <AppointmentModal 
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingAppointment(null);
+        }}
+        onAppointmentAdded={fetchAppointments}
+        appointment={editingAppointment}
+      />
+
+      <RescheduleModal
+        isOpen={isRescheduleModalOpen}
+        onClose={() => {
+          setIsRescheduleModalOpen(false);
+          setSelectedAppointmentForReschedule(null);
+        }}
+        appointment={selectedAppointmentForReschedule}
+        onReschedule={fetchAppointments}
+      />
     </div>
-
-    <AppointmentModal 
-      isOpen={isModalOpen}
-      onClose={() => {
-        setIsModalOpen(false);
-        setEditingAppointment(null);
-      }}
-      onAppointmentAdded={fetchAppointments}
-      appointment={editingAppointment}
-    />
-
-    <RescheduleModal
-      isOpen={isRescheduleModalOpen}
-      onClose={() => {
-        setIsRescheduleModalOpen(false);
-        setSelectedAppointmentForReschedule(null);
-      }}
-      appointment={selectedAppointmentForReschedule}
-      onReschedule={fetchAppointments}
-    />
-  </div>
-);
+  );
 };
 
-export default AppointmentScheduling; 
+export default AppointmentScheduling;
