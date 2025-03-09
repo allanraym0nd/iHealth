@@ -650,6 +650,34 @@ addInventoryItem: async (req, res, next) => {
     } catch (error) {
       next(error);
     }
+  },
+
+  deleteInventoryItem: async (req, res, next) => {
+    try {
+      const lab = await Lab.findOne();
+      if (!lab) {
+        throw new AppError('Lab not found', 404);
+      }
+  
+      // Find and remove the inventory item
+      const itemIndex = lab.inventory.findIndex(item => 
+        item._id.toString() === req.params.id
+      );
+  
+      if (itemIndex === -1) {
+        throw new AppError('Inventory item not found', 404);
+      }
+  
+      lab.inventory.splice(itemIndex, 1);
+      await lab.save();
+  
+      res.json({
+        status: 'success',
+        message: 'Inventory item deleted successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
   }
 };
 
