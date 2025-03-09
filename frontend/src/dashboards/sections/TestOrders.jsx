@@ -176,10 +176,51 @@ const TestOrders = () => {
   const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredOrders, setFilteredOrders] = useState([]);
 
   useEffect(() => {
     fetchTestOrders();
   }, []);
+
+  // Filter and search orders whenever the dependencies change
+  useEffect(() => {
+    if (testOrders.length > 0) {
+      // First filter out records with incomplete details
+      const validOrders = testOrders.filter(order => 
+        order.patient?.name && // Has patient name
+        order.doctor?.name &&  // Has doctor name
+        order.testType &&      // Has test type
+        isValidDate(order.scheduledDate) // Has valid date
+      );
+      
+      // Then apply search and status filters
+      const result = validOrders.filter(order => {
+        // Status filter
+        const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
+        
+        // Search filter - case insensitive
+        const matchesSearch = searchTerm === '' || 
+          (order.patient?.name && order.patient.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (order.testType && order.testType.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (order.doctor?.name && order.doctor.name.toLowerCase().includes(searchTerm.toLowerCase()));
+        
+        return matchesStatus && matchesSearch;
+      });
+      
+      setFilteredOrders(result);
+    } else {
+      setFilteredOrders([]);
+    }
+  }, [testOrders, filterStatus, searchTerm]);
+
+  // Helper function to check if a date is valid
+  const isValidDate = (dateString) => {
+    if (!dateString) return false;
+    
+    const date = new Date(dateString);
+    return date instanceof Date && !isNaN(date) && date.toString() !== 'Invalid Date';
+  };
 
   const fetchTestOrders = async () => {
     try {
@@ -204,11 +245,6 @@ const TestOrders = () => {
     }
   };
 
-  const filteredOrders = testOrders.filter(order => {
-    if (filterStatus === 'all') return true;
-    return order.status === filterStatus;
-  });
-
   if (loading) return <div className="p-4">Loading test orders...</div>;
   if (error) return <div className="p-4 text-red-500">{error}</div>;
 
@@ -230,8 +266,10 @@ const TestOrders = () => {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <input
             type="text"
-            placeholder="Search test orders..."
+            placeholder="Search by patient, test type, or doctor..."
             className="w-full pl-10 pr-4 py-2 border rounded-lg"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <select 
@@ -243,7 +281,15 @@ const TestOrders = () => {
           <option value="Pending">Pending</option>
           <option value="In Progress">In Progress</option>
           <option value="Completed">Completed</option>
+          <option value="sample_collected">Sample Collected</option>
         </select>
+      </div>
+
+      {/* Results summary */}
+      <div className="mb-4 text-sm text-gray-600">
+        Showing {filteredOrders.length} of {testOrders.length} test orders
+        {searchTerm && <span> matching "{searchTerm}"</span>}
+        {filterStatus !== 'all' && <span> with status "{filterStatus}"</span>}
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -259,38 +305,51 @@ const TestOrders = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {filteredOrders.map((order) => (
-              <tr key={order._id}>
-                <td className="px-6 py-4 whitespace-nowrap">{order.patient?.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{order.testType}</td>
-                <td className="px-6 py-4 whitespace-nowrap">Dr. {order.doctor?.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {new Date(order.scheduledDate).toLocaleString()}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    order.status === 'Pending'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : order.status === 'In Progress'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-green-100 text-green-800'
-                  }`}>
-                    {order.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <select
-                    className="px-2 py-1 border rounded"
-                    value={order.status}
-                    onChange={(e) => handleStatusChange(order._id, e.target.value)}
-                  >
-                    <option value="Pending">Pending</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Completed">Completed</option>
-                  </select>
+            {filteredOrders.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                  {searchTerm || filterStatus !== 'all' 
+                    ? "No test orders match your search criteria" 
+                    : "No test orders found"}
                 </td>
               </tr>
-            ))}
+            ) : (
+              filteredOrders.map((order) => (
+                <tr key={order._id}>
+                  <td className="px-6 py-4 whitespace-nowrap">{order.patient?.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{order.testType}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">Dr. {order.doctor?.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {new Date(order.scheduledDate).toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      order.status === 'Pending'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : order.status === 'In Progress'
+                        ? 'bg-blue-100 text-blue-800'
+                        : order.status === 'sample_collected'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      {order.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <select
+                      className="px-2 py-1 border rounded"
+                      value={order.status}
+                      onChange={(e) => handleStatusChange(order._id, e.target.value)}
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="sample_collected">Sample Collected</option>
+                      <option value="Completed">Completed</option>
+                    </select>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
