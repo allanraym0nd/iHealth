@@ -8,14 +8,15 @@ const medicalRecordController = {
   
   create: async (req, res, next) => {
     try {
-      const { patientId, diagnosis, symptoms, treatment, notes } = req.body;
+      const { patientId, diagnosis, symptoms, treatment, notes, type } = req.body;
   
       console.log('Creating medical record:', {
         patientId,
         userId: req.user.id,
         diagnosis,
         symptoms,
-        treatment
+        treatment,
+        type
       });
   
       // Find the doctor using the logged-in user's ID
@@ -33,7 +34,8 @@ const medicalRecordController = {
         diagnosis,
         symptoms,
         treatment,
-        notes
+        notes,
+        type: type || 'General' // Add this line to include the type field with a default
       });
   
       console.log('Medical Record to be saved:', medicalRecord);
