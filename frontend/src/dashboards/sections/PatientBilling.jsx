@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CreditCard, Download, DollarSign, Filter, Printer, X } from 'lucide-react';
 import patientService from '../../api/patientService';
 
-// Payment Modal
+// Payment Modal with improved functionality
 const PaymentModal = ({ isOpen, onClose, invoice, onPaymentComplete }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -10,7 +10,8 @@ const PaymentModal = ({ isOpen, onClose, invoice, onPaymentComplete }) => {
     paymentMethod: 'credit',
     cardNumber: '',
     expiryDate: '',
-    cvv: ''
+    cvv: '',
+    cashReferenceNumber: ''
   });
 
   const handleSubmit = async (e) => {
@@ -19,7 +20,11 @@ const PaymentModal = ({ isOpen, onClose, invoice, onPaymentComplete }) => {
     setError(null);
 
     try {
-      await patientService.makePayment(invoice._id, paymentData);
+      // Ensure we're sending the complete payment amount
+      await patientService.makePayment(invoice._id, {
+        ...paymentData,
+        amount: invoice.amount || invoice.totalAmount
+      });
       onPaymentComplete();
       onClose();
     } catch (error) {
@@ -30,6 +35,9 @@ const PaymentModal = ({ isOpen, onClose, invoice, onPaymentComplete }) => {
   };
 
   if (!isOpen || !invoice) return null;
+
+  // Correctly determine the invoice amount
+  const invoiceAmount = invoice.amount || invoice.totalAmount || 0;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -43,9 +51,9 @@ const PaymentModal = ({ isOpen, onClose, invoice, onPaymentComplete }) => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-medium">Invoice #{invoice.number}</h4>
-            <p className="text-2xl font-bold text-gray-800 mt-1">${invoice.amount}</p>
-            <p className="text-sm text-gray-600">Due by {new Date(invoice.dueDate).toLocaleDateString()}</p>
+            <h4 className="font-medium">Invoice #{invoice.number || ('INV-' + (invoice._id?.substring(0, 8)))}</h4>
+            <p className="text-2xl font-bold text-gray-800 mt-1">${invoiceAmount.toFixed(2)}</p>
+            <p className="text-sm text-gray-600">Due by {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : 'N/A'}</p>
           </div>
 
           <div>
@@ -56,6 +64,7 @@ const PaymentModal = ({ isOpen, onClose, invoice, onPaymentComplete }) => {
               onChange={(e) => setPaymentData({ ...paymentData, paymentMethod: e.target.value })}
             >
               <option value="credit">Credit Card</option>
+              <option value="cash">Cash</option>
               <option value="bank">Bank Transfer</option>
               <option value="insurance">Insurance</option>
             </select>
@@ -102,6 +111,20 @@ const PaymentModal = ({ isOpen, onClose, invoice, onPaymentComplete }) => {
             </>
           )}
 
+          {paymentData.paymentMethod === 'cash' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Cash Reference Number (Optional)</label>
+              <input
+                type="text"
+                placeholder="Reference #"
+                className="mt-1 w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={paymentData.cashReferenceNumber}
+                onChange={(e) => setPaymentData({ ...paymentData, cashReferenceNumber: e.target.value })}
+              />
+              <p className="mt-1 text-sm text-gray-500">You can pay cash at the reception desk.</p>
+            </div>
+          )}
+
           {error && (
             <div className="text-red-500 text-sm">
               {error}
@@ -118,7 +141,7 @@ const PaymentModal = ({ isOpen, onClose, invoice, onPaymentComplete }) => {
                   : 'bg-blue-500 hover:bg-blue-600 text-white'
               }`}
             >
-              {loading ? 'Processing...' : `Pay $${invoice.amount}`}
+              {loading ? 'Processing...' : `Pay $${invoiceAmount.toFixed(2)}`}
             </button>
             <button
               type="button"
@@ -133,6 +156,150 @@ const PaymentModal = ({ isOpen, onClose, invoice, onPaymentComplete }) => {
       </div>
     </div>
   );
+};
+
+// Fix Download function to handle cases when properties might be undefined
+const handleDownloadInvoice = (invoice) => {
+  try {
+    // Determine the proper invoice number format
+    const invoiceNumber = invoice.number || ('INV-' + (invoice._id?.substring(0, 8))) || 'N/A';
+    // Get the correct amount
+    const invoiceAmount = invoice.amount || invoice.totalAmount || 0;
+    
+    const invoiceContent = `
+INVOICE
+
+Invoice #: ${invoiceNumber}
+Date: ${(invoice.date || invoice.createdAt) ? new Date(invoice.date || invoice.createdAt).toLocaleDateString() : 'N/A'}
+Due Date: ${invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : 'N/A'}
+-----------------------------------------
+
+Patient: ${invoice.patientName || "Patient"}
+Status: ${invoice.status || 'N/A'}
+
+ITEMS:
+${invoice.items ? invoice.items.map(item => 
+  `${item.service || 'Service'} - ${item.description || 'N/A'}: $${item.amount ? item.amount.toFixed(2) : '0.00'}`
+).join('\n') : invoice.description + `: $${invoiceAmount.toFixed(2)}`}
+
+-----------------------------------------
+TOTAL: $${invoiceAmount.toFixed(2)}
+
+Thank you for your business!
+`;
+
+    const blob = new Blob([invoiceContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Invoice-${invoiceNumber}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Error downloading invoice:', error);
+    alert('Failed to download invoice');
+  }
+};
+
+// Fix Print function to handle undefined values
+const handlePrintInvoice = (invoice) => {
+  try {
+    // Determine the proper invoice number format
+    const invoiceNumber = invoice.number || ('INV-' + (invoice._id?.substring(0, 8))) || 'N/A';
+    // Get the correct amount
+    const invoiceAmount = invoice.amount || invoice.totalAmount || 0;
+    
+    const printWindow = window.open('', '_blank');
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Invoice ${invoiceNumber}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+          .invoice-header { margin-bottom: 20px; }
+          .invoice-title { font-size: 24px; font-weight: bold; }
+          .invoice-details { display: flex; justify-content: space-between; margin-bottom: 20px; }
+          .invoice-details div { flex: 1; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+          th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+          th { background-color: #f2f2f2; }
+          .total-row { font-weight: bold; }
+          .footer { margin-top: 40px; text-align: center; color: #666; }
+          @media print {
+            body { padding: 0; }
+            button { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="invoice-header">
+          <div class="invoice-title">INVOICE</div>
+          <p>Invoice #: ${invoiceNumber}</p>
+          <p>Date: ${(invoice.date || invoice.createdAt) ? new Date(invoice.date || invoice.createdAt).toLocaleDateString() : 'N/A'}</p>
+          <p>Due Date: ${invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : 'N/A'}</p>
+        </div>
+        
+        <div class="invoice-details">
+          <div>
+            <strong>Patient:</strong>
+            <p>${invoice.patientName || "Patient"}</p>
+          </div>
+          <div>
+            <strong>Status:</strong>
+            <p>${invoice.status || 'N/A'}</p>
+          </div>
+        </div>
+        
+        <table>
+          <thead>
+            <tr>
+              <th>Service</th>
+              <th>Description</th>
+              <th style="text-align: right;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${invoice.items ? invoice.items.map(item => `
+              <tr>
+                <td>${item.service || 'Service'}</td>
+                <td>${item.description || 'N/A'}</td>
+                <td style="text-align: right;">$${item.amount ? item.amount.toFixed(2) : '0.00'}</td>
+              </tr>
+            `).join('') : `
+              <tr>
+                <td colspan="2">${invoice.description || 'Medical Service'}</td>
+                <td style="text-align: right;">$${invoiceAmount.toFixed(2)}</td>
+              </tr>
+            `}
+            <tr class="total-row">
+              <td colspan="2" style="text-align: right;">Total</td>
+              <td style="text-align: right;">$${invoiceAmount.toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <div class="footer">
+          <p>Thank you for your business!</p>
+        </div>
+        
+        <script>
+          window.onload = function() {
+            window.print();
+          }
+        </script>
+      </body>
+      </html>
+    `;
+    
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  } catch (error) {
+    console.error('Error printing invoice:', error);
+    alert('Failed to print invoice');
+  }
 };
 
 const PatientBilling = () => {
@@ -155,12 +322,31 @@ const PatientBilling = () => {
     try {
       setLoading(true);
       const response = await patientService.getBillingData();
-      setInvoices(response.data.invoices || []);
+      console.log('Billing data:', response); // Debug
+      
+      // Ensure we have valid invoice data with proper status values
+      const invoicesData = response.data?.invoices || [];
+      
+      // Normalize invoice status values to lowercase for consistent comparison
+      const normalizedInvoices = invoicesData.map(invoice => ({
+        ...invoice,
+        // Make sure status exists and is normalized to lowercase
+        status: (invoice.status || 'pending').toLowerCase(),
+        // Ensure amount is set correctly
+        amount: invoice.amount || invoice.totalAmount || 0,
+        // Set proper invoice number format
+        number: invoice.number || ('INV-' + (invoice._id?.substring(0, 8)))
+      }));
+      
+      setInvoices(normalizedInvoices);
+      
+      // Safely set summary data with fallbacks
       setSummaryData({
-        outstandingBalance: response.data.outstandingBalance || 0,
-        lastPayment: response.data.lastPayment || { amount: 0, date: null },
-        insuranceCoverage: response.data.insuranceCoverage || 0
+        outstandingBalance: response.data?.outstandingBalance || 0,
+        lastPayment: response.data?.lastPayment || { amount: 0, date: null },
+        insuranceCoverage: response.data?.insuranceCoverage || 0
       });
+      
       setError(null);
     } catch (err) {
       console.error('Error fetching billing data:', err);
@@ -170,9 +356,10 @@ const PatientBilling = () => {
     }
   };
 
+  // Improved filtering logic
   const filteredInvoices = invoices.filter(invoice => {
     if (filterStatus === 'all') return true;
-    return invoice.status === filterStatus;
+    return invoice.status.toLowerCase() === filterStatus.toLowerCase();
   });
 
   if (loading) return <div className="p-4">Loading billing data...</div>;
@@ -184,12 +371,14 @@ const PatientBilling = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-gray-500 text-sm font-medium">Outstanding Balance</h3>
-          <p className="text-3xl font-bold text-gray-800">${summaryData.outstandingBalance}</p>
+          <p className="text-3xl font-bold text-gray-800">
+            ${summaryData.outstandingBalance !== undefined ? summaryData.outstandingBalance.toFixed(2) : '0.00'}
+          </p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-gray-500 text-sm font-medium">Last Payment</h3>
-          <p className="text-3xl font-bold text-gray-800">${summaryData.lastPayment.amount}</p>
-          {summaryData.lastPayment.date && (
+          <p className="text-3xl font-bold text-gray-800">${summaryData.lastPayment?.amount ? summaryData.lastPayment.amount.toFixed(2) : '0.00'}</p>
+          {summaryData.lastPayment?.date && (
             <p className="text-sm text-gray-500">
               {new Date(summaryData.lastPayment.date).toLocaleDateString()}
             </p>
@@ -197,7 +386,9 @@ const PatientBilling = () => {
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-gray-500 text-sm font-medium">Insurance Coverage</h3>
-          <p className="text-3xl font-bold text-gray-800">{summaryData.insuranceCoverage}%</p>
+          <p className="text-3xl font-bold text-gray-800">
+            {summaryData.insuranceCoverage !== undefined ? summaryData.insuranceCoverage : 0}%
+          </p>
         </div>
       </div>
 
@@ -222,7 +413,9 @@ const PatientBilling = () => {
         <div className="divide-y divide-gray-200">
           {filteredInvoices.length === 0 ? (
             <div className="p-4 text-center text-gray-500">
-              No invoices found
+              {filterStatus !== 'all' 
+                ? `No ${filterStatus} invoices found` 
+                : "No invoices found"}
             </div>
           ) : (
             filteredInvoices.map((invoice) => (
@@ -238,16 +431,16 @@ const PatientBilling = () => {
                           ? 'bg-red-100 text-red-800'
                           : 'bg-yellow-100 text-yellow-800'
                       }`}>
-                        {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                        {invoice.status ? invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) : 'Unknown'}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">{invoice.description}</p>
+                    <p className="text-sm text-gray-500 mt-1">{invoice.description || 'Medical services'}</p>
                     <p className="text-sm text-gray-500">
-                      Due: {new Date(invoice.dueDate).toLocaleDateString()}
+                      Due: {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : 'N/A'}
                     </p>
                   </div>
                   <div className="flex items-center space-x-4">
-                    <p className="text-xl font-bold">${invoice.amount}</p>
+                    <p className="text-xl font-bold">${invoice.amount.toFixed(2)}</p>
                     <div className="flex space-x-2">
                       {invoice.status !== 'paid' && (
                         <button
@@ -258,10 +451,18 @@ const PatientBilling = () => {
                           Pay
                         </button>
                       )}
-                      <button className="text-gray-600 hover:text-gray-900">
+                      <button 
+                        onClick={() => handleDownloadInvoice(invoice)}
+                        className="text-gray-600 hover:text-gray-900"
+                        title="Download invoice"
+                      >
                         <Download size={20} />
                       </button>
-                      <button className="text-gray-600 hover:text-gray-900">
+                      <button 
+                        onClick={() => handlePrintInvoice(invoice)}
+                        className="text-gray-600 hover:text-gray-900"
+                        title="Print invoice"
+                      >
                         <Printer size={20} />
                       </button>
                     </div>
