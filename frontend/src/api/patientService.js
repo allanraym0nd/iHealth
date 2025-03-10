@@ -199,7 +199,22 @@ getAppointments: async () => {
   
   makePayment: async (invoiceId, paymentDetails) => {
     try {
-      const response = await api.post(`/patients/billing/${invoiceId}/pay`, paymentDetails);
+      // Ensure we're sending the payment method in the format expected by the billing service
+      const formattedPaymentMethod = {
+        credit: 'Credit Card',
+        cash: 'Cash',
+        bank: 'Bank Transfer',
+        insurance: 'Insurance'
+      }[paymentDetails.paymentMethod] || paymentDetails.paymentMethod;
+      
+      const response = await api.post(`/patients/billing/${invoiceId}/pay`, {
+        ...paymentDetails,
+        paymentMethod: formattedPaymentMethod
+      });
+      
+      // After successful payment, refresh the billing data to sync with the billing dashboard
+      await api.get('/billing/invoices');
+      
       return response.data;
     } catch (error) {
       console.error('Error processing payment:', error);
