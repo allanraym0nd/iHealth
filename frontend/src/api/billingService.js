@@ -122,15 +122,17 @@ submitInsuranceClaim: async (claimData) => {
   }
 },
   // Financial reports
-  getFinancialReports: async () => {
-    try {
-      const response = await api.get('/billing/reports');
-      return response.data;
-    } catch (error) {
-      console.error('Error getting financial reports:', error);
-      throw error;
-    }
-  },
+getFinancialReports: async (params = {}) => {
+  try {
+    // Add period to query params if specified
+    const queryParams = params.period ? `?period=${params.period}` : '';
+    const response = await api.get(`/billing/reports${queryParams}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error getting financial reports:', error);
+    throw error;
+  }
+},
 
   // Add these methods to billingService.js
 getExpenses: async () => {
