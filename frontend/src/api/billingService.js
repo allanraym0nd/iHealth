@@ -153,6 +153,34 @@ trackExpense: async (expenseData) => {
     console.error('Error tracking expense:', error);
     throw error;
   }
+},
+
+
+processMpesaPayment: async (billingId, invoiceId, paymentData) => {
+  try {
+    console.log('Processing M-Pesa payment for invoice:', invoiceId);
+    console.log('M-Pesa payment data:', paymentData);
+    
+    const response = await api.post(`/billing/${billingId}/invoices/${invoiceId}/mpesa-payment`, {
+      phoneNumber: paymentData.phoneNumber,
+      amount: paymentData.amount
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('M-Pesa payment error:', error.response?.data || error.message);
+    throw error;
+  }
+},
+
+checkPaymentStatus: async (billingId, invoiceId) => {
+  try {
+    const response = await api.get(`/billing/${billingId}/invoices/${invoiceId}/payment-status`);
+    return response.data;
+  } catch (error) {
+    console.error('Error checking payment status:', error);
+    throw error;
+  }
 }
 };
 
