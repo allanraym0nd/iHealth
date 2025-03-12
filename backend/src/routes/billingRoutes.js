@@ -1,5 +1,7 @@
 const router = require('express').Router();
 const billingController = require('../controllers/billingController');
+const mpesaController = require('../controllers/mpesaController');
+
 const { 
   invoiceValidation, 
   paymentValidation, 
@@ -27,6 +29,13 @@ router.get('/expenses', auth, billingController.getExpenses);
 router.post('/expenses', auth, billingController.trackExpenses);
 // Payment routes
 router.get('/payments', auth, billingController.getPayments);
+
+router.post('/billing/:billingId/invoices/:invoiceId/mpesa-payment', mpesaController.initiatePayment);
+router.post('/mpesa-callback', mpesaController.mpesaCallback);
+router.get('/billing/:billingId/invoices/:invoiceId/payment-status', mpesaController.checkPaymentStatus);
+
+
+
 
 // Report routes
 router.get('/reports', auth, billingController.getFinancialReports);
