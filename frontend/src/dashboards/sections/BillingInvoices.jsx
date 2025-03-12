@@ -225,18 +225,88 @@ useEffect(() => {
 };
 
 // Invoice Modal Component
+// Invoice Modal Component with M-Pesa integration
 const InvoiceModal = ({ isOpen, onClose, invoice, onDownload, onPrint }) => {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('Credit Card');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [paymentError, setPaymentError] = useState(null);
+  
+  // For M-Pesa payment
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [checkingStatus, setCheckingStatus] = useState(false);
 
   if (!isOpen || !invoice) return null;
 
-  const handleProcessPayment = async () => {
-    try {
-      setProcessingPayment(true);
+  // Validate Kenyan phone number
+  const validatePhoneNumber = (number) => {
+    // Allow formats: 07XXXXXXXX, 01XXXXXXXX, 254XXXXXXXXX
+    const regex = /^(07|01|254)\d{8,9}$/;
+    return regex.test(number.replace(/\s/g, ''));
+  };
+
+  // Format phone number to international format
+  const formatPhoneNumber = (number) => {
+    const cleaned = number.replace(/\s/g, '');
+    // If starts with 0, replace with 254
+    if (cleaned.startsWith('0')) {
+      return '254' + cleaned.substring(1);
+    }
+    return cleaned;
+  };
+
+  // In the InvoiceModal component
+const handleProcessPayment = async () => {
+  try {
+    setProcessingPayment(true);
+    
+    // For M-Pesa payments, validate phone number
+    if (paymentMethod === 'M-Pesa') {
+      if (!phoneNumber || !validatePhoneNumber(phoneNumber)) {
+        throw new Error('Please enter a valid Kenyan phone number');
+      }
       
-      // Call API to process payment
+      // Process M-Pesa payment
+      const billingId = invoice.billingId || invoice._id.split('-')[0]; // Adjust based on your structure
+      await billingService.processMpesaPayment(billingId, invoice._id, {
+        phoneNumber: formatPhoneNumber(phoneNumber),
+        amount: invoice.totalAmount
+      });
+      
+      // M-Pesa payments are asynchronous, so we need to check the status
+      setCheckingStatus(true);
+      
+      // Poll payment status every 5 seconds
+      const statusCheckInterval = setInterval(async () => {
+        try {
+          const statusResponse = await billingService.checkPaymentStatus(billingId, invoice._id);
+          
+          if (statusResponse.status === 'completed') {
+            clearInterval(statusCheckInterval);
+            setCheckingStatus(false);
+            setPaymentSuccess(true);
+            
+            // Close modal after delay and refresh
+            setTimeout(() => {
+              onClose();
+              window.location.reload(); // Refresh to get updated data
+            }, 2000);
+          }
+        } catch (statusError) {
+          console.error('Error checking payment status:', statusError);
+        }
+      }, 5000);
+      
+      // Timeout after 2 minutes
+      setTimeout(() => {
+        clearInterval(statusCheckInterval);
+        setCheckingStatus(false);
+        setPaymentError('Payment verification timed out. Please check your phone for an STK push or try again.');
+        setProcessingPayment(false);
+      }, 120000);
+      
+    } else {
+      // Regular payment processing for other methods
       await billingService.processPayment(invoice._id, { 
         paymentMethod: paymentMethod,
         totalAmount: invoice.totalAmount
@@ -250,14 +320,14 @@ const InvoiceModal = ({ isOpen, onClose, invoice, onDownload, onPrint }) => {
         onClose();
         window.location.reload(); // Refresh to get updated data
       }, 2000);
-      
-    } catch (error) {
-      console.error('Error processing payment:', error);
-      alert(error.response?.data?.message || 'Failed to process payment. Please try again.');
-    } finally {
-      setProcessingPayment(false);
     }
-  };
+  } catch (error) {
+    console.error('Error processing payment:', error);
+    setPaymentError(error.message || 'Failed to process payment. Please try again.');
+    setProcessingPayment(false);
+    setCheckingStatus(false);
+  }
+};
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -335,24 +405,64 @@ const InvoiceModal = ({ isOpen, onClose, invoice, onDownload, onPrint }) => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
                   <select 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
+                    disabled={processingPayment || checkingStatus}
                   >
                     <option value="Credit Card">Credit Card</option>
                     <option value="Cash">Cash</option>
                     <option value="Bank Transfer">Bank Transfer</option>
                     <option value="Insurance">Insurance</option>
+                    <option value="M-Pesa">M-Pesa</option>
                   </select>
                 </div>
+
+                {/* M-Pesa phone number input */}
+                {paymentMethod === 'M-Pesa' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Phone Number (format: 07XXXXXXXX or 254XXXXXXXXX)
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g., 0712345678"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      disabled={processingPayment || checkingStatus}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      You will receive an STK push on this number to complete the payment
+                    </p>
+                  </div>
+                )}
+
+                {/* Payment error message */}
+                {paymentError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+                    {paymentError}
+                  </div>
+                )}
+
+                {/* Success message */}
+                {paymentSuccess && (
+                  <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md">
+                    Payment processed successfully! Redirecting...
+                  </div>
+                )}
+
                 <button
                   onClick={handleProcessPayment}
-                  disabled={processingPayment}
+                  disabled={processingPayment || checkingStatus || paymentSuccess}
                   className={`w-full px-4 py-2 bg-blue-500 text-white rounded-lg ${
-                    processingPayment ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'
+                    processingPayment || checkingStatus || paymentSuccess ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'
                   }`}
                 >
-                  {processingPayment ? 'Processing...' : 'Process Payment'}
+                  {processingPayment ? 'Processing...' : 
+                   checkingStatus ? 'Waiting for confirmation...' :
+                   paymentSuccess ? 'Payment Successful' : 
+                   paymentMethod === 'M-Pesa' ? 'Send Payment Request' : 'Process Payment'}
                 </button>
               </div>
             </div>
@@ -363,6 +473,7 @@ const InvoiceModal = ({ isOpen, onClose, invoice, onDownload, onPrint }) => {
             <button
               onClick={onClose}
               className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              disabled={processingPayment || checkingStatus}
             >
               Close
             </button>
@@ -384,7 +495,6 @@ const InvoiceModal = ({ isOpen, onClose, invoice, onDownload, onPrint }) => {
     </div>
   );
 };
-
 
 // Main Component
 const BillingInvoices = () => {
