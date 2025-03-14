@@ -155,15 +155,15 @@ trackExpense: async (expenseData) => {
   }
 },
 
-
-processMpesaPayment: async (billingId, invoiceId, paymentData) => {
+processMpesaPayment: async (invoiceId, paymentData) => {
   try {
     console.log('Processing M-Pesa payment for invoice:', invoiceId);
     console.log('M-Pesa payment data:', paymentData);
     
-    const response = await api.post(`/billing/${billingId}/invoices/${invoiceId}/mpesa-payment`, {
-      phoneNumber: paymentData.phoneNumber,
-      amount: paymentData.amount
+    const response = await api.put(`/billing/invoices/${invoiceId}/payment`, {
+      paymentMethod: 'M-Pesa',
+      amount: paymentData.amount,
+      phoneNumber: paymentData.phoneNumber
     });
     
     return response.data;
@@ -173,9 +173,9 @@ processMpesaPayment: async (billingId, invoiceId, paymentData) => {
   }
 },
 
-checkPaymentStatus: async (billingId, invoiceId) => {
+checkPaymentStatus: async (invoiceId) => {
   try {
-    const response = await api.get(`/billing/${billingId}/invoices/${invoiceId}/payment-status`);
+    const response = await api.get(`/billing/invoices/${invoiceId}/payment-status`);
     return response.data;
   } catch (error) {
     console.error('Error checking payment status:', error);
