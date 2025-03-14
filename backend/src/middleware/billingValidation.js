@@ -32,19 +32,26 @@ const billingValidation = {
   paymentValidation: [
     // Validate invoice ID
     param('invoiceId')
-      .notEmpty().withMessage('Invoice ID is required')
-      .isMongoId().withMessage('Invalid invoice ID'),
-
-    // Validate payment amount
-    check('amount')
-      .notEmpty().withMessage('Payment amount is required')
-      .isFloat({ min: 0 }).withMessage('Payment amount must be a positive number'),
+      .notEmpty().withMessage('Invoice ID is required'),
+     // .isMongoId().withMessage('Invalid invoice ID'),
 
     // Validate payment method
     check('paymentMethod')
       .notEmpty().withMessage('Payment method is required')
-      .isIn(['Cash', 'Credit Card', 'Insurance', 'Bank Transfer'])
-      .withMessage('Invalid payment method')
+      .isIn(['Cash', 'Credit Card', 'Insurance', 'Bank Transfer', 'M-Pesa'])
+      .withMessage('Invalid payment method'),
+
+    // Conditional validation for M-Pesa phone number
+    check('phoneNumber')
+      .if((value, { req }) => req.body.paymentMethod === 'M-Pesa')
+      .notEmpty().withMessage('Phone number is required for M-Pesa payment')
+      .matches(/^(07|01|254)\d{8,9}$/)
+      .withMessage('Invalid Kenyan phone number format'),
+
+    // Validate payment amount
+    check('amount')
+      .notEmpty().withMessage('Payment amount is required')
+      .isFloat({ min: 0 }).withMessage('Payment amount must be a positive number')
   ],
 
   // Insurance claim validation
