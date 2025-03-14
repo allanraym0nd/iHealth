@@ -1,5 +1,6 @@
 const Billing = require('../models/Billing');
 const { AppError } = require('../middleware/errorHandler');
+const mpesaService = require('../services/mpesaService');
 
 const billingController = {
 
@@ -131,7 +132,9 @@ getPayments: async (req, res, next) => {
   processPayment: async (req, res, next) => {
     try {
       const { invoiceId } = req.params;
-      const { paymentMethod, amount } = req.body;
+      const { paymentMethod, amount, phoneNumber } = req.body;
+  
+      console.log('Payment processing request:', { invoiceId, paymentMethod, amount, phoneNumber });
   
       // Find the billing record with this invoice
       const billing = await Billing.findOne({ 'invoices._id': invoiceId });
@@ -149,21 +152,57 @@ getPayments: async (req, res, next) => {
         return res.status(404).json({ message: 'Invoice not found' });
       }
   
-      // Validate that payment amount matches invoice total
-      if (amount !== billing.invoices[invoiceIndex].totalAmount) {
+      // Verify invoice amount matches
+      const invoiceAmount = billing.invoices[invoiceIndex].totalAmount;
+      if (amount !== invoiceAmount) {
         return res.status(400).json({ 
           message: 'Payment amount must match the invoice total',
-          expectedAmount: billing.invoices[invoiceIndex].totalAmount,
+          expectedAmount: invoiceAmount,
           providedAmount: amount
         });
       }
   
-      // Update invoice status and payment details
+      // Handle M-Pesa payment specifically
+      if (paymentMethod === 'M-Pesa') {
+        if (!phoneNumber) {
+            return res.status(400).json({ message: 'Phone number is required for M-Pesa payment' });
+        }
+        
+        if (!/^2547\d{8}$/.test(phoneNumber)) {
+            return res.status(400).json({ message: 'Invalid phone number format. Use 2547XXXXXXXX' });
+        }
+        
+        console.log('Processing M-Pesa Payment with:', phoneNumber); // Log phone number
+        
+        try {
+            const mpesaResponse = await mpesaService.initiateSTKPush(phoneNumber, invoiceAmount, invoiceId);
+    
+  
+          // Update invoice status to pending M-Pesa payment
+          billing.invoices[invoiceIndex].status = 'Pending';
+          billing.invoices[invoiceIndex].paymentMethod = 'M-Pesa';
+  
+          await billing.save();
+  
+          return res.status(200).json({
+            message: 'M-Pesa payment initiated',
+            checkoutRequestId: mpesaResponse.CheckoutRequestID,
+            status: 'pending'
+          });
+        } catch (mpesaError) {
+          console.error('M-Pesa payment error:', mpesaError);
+          return res.status(500).json({
+            message: 'Failed to initiate M-Pesa payment',
+            error: mpesaError.message
+          });
+        }
+      }
+  
+      // Handle other payment methods
       billing.invoices[invoiceIndex].status = 'Paid';
       billing.invoices[invoiceIndex].paymentMethod = paymentMethod;
       billing.invoices[invoiceIndex].paidDate = new Date();
   
-      // Save the updated billing document
       await billing.save();
   
       res.status(200).json({
@@ -178,7 +217,85 @@ getPayments: async (req, res, next) => {
       });
     }
   },
-  
+
+  // Add this to your existing billingController object
+checkPaymentStatus: async (req, res, next) => {
+  try {
+    const { invoiceId } = req.params;
+    
+    // Find the billing record with this invoice
+    const billing = await Billing.findOne({ 'invoices._id': invoiceId });
+
+    if (!billing) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Invoice not found' 
+      });
+    }
+
+    // Find the specific invoice
+    const invoice = billing.invoices.find(
+      inv => inv._id.toString() === invoiceId
+    );
+
+    if (!invoice) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Invoice not found' 
+      });
+    }
+
+    // Return the current payment status
+    return res.status(200).json({
+      success: true,
+      status: invoice.status.toLowerCase(),
+      message: `Payment is ${invoice.status.toLowerCase()}`
+    });
+    
+  } catch (error) {
+    console.error('Error checking payment status:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to check payment status',
+      error: error.message
+    });
+  }
+},
+
+// In your billingController.js
+updatePaymentStatus: async (req, res, next) => {
+  try {
+    const { invoiceId } = req.params;
+    const { status } = req.body;
+    
+    const billing = await Billing.findOne({ 'invoices._id': invoiceId });
+    if (!billing) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+    
+    const invoiceIndex = billing.invoices.findIndex(
+      inv => inv._id.toString() === invoiceId
+    );
+    
+    if (invoiceIndex === -1) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+    
+    billing.invoices[invoiceIndex].status = status;
+    if (status.toLowerCase() === 'paid') {
+      billing.invoices[invoiceIndex].paidDate = new Date();
+    }
+    
+    await billing.save();
+    
+    res.status(200).json({
+      message: `Payment status updated to ${status}`,
+      invoice: billing.invoices[invoiceIndex]
+    });
+  } catch (error) {
+    next(error);
+  }
+},
       
   getAllPatients: async (req, res, next) => {
     try {
