@@ -256,77 +256,72 @@ const InvoiceModal = ({ isOpen, onClose, invoice, onDownload, onPrint }) => {
   };
 
   // In the InvoiceModal component
-const handleProcessPayment = async () => {
-  try {
-    setProcessingPayment(true);
-    
-    // For M-Pesa payments, validate phone number
-    if (paymentMethod === 'M-Pesa') {
-      if (!phoneNumber || !validatePhoneNumber(phoneNumber)) {
-        throw new Error('Please enter a valid Kenyan phone number');
-      }
-      
-      // Process M-Pesa payment
-      const billingId = invoice.billingId || invoice._id.split('-')[0]; // Adjust based on your structure
-      await billingService.processMpesaPayment(billingId, invoice._id, {
-        phoneNumber: formatPhoneNumber(phoneNumber),
-        amount: invoice.totalAmount
-      });
-      
-      // M-Pesa payments are asynchronous, so we need to check the status
-      setCheckingStatus(true);
-      
-      // Poll payment status every 5 seconds
-      const statusCheckInterval = setInterval(async () => {
-        try {
-          const statusResponse = await billingService.checkPaymentStatus(billingId, invoice._id);
-          
-          if (statusResponse.status === 'completed') {
-            clearInterval(statusCheckInterval);
-            setCheckingStatus(false);
-            setPaymentSuccess(true);
+  const handleProcessPayment = async () => {
+    try {
+        setProcessingPayment(true);
+        console.log("Processing payment for Invoice ID:", invoice._id);
+
+        if (paymentMethod === 'M-Pesa') {
+            if (!phoneNumber || !validatePhoneNumber(phoneNumber)) {
+                throw new Error('Please enter a valid Kenyan phone number');
+            }
             
-            // Close modal after delay and refresh
+            console.log("Sending M-Pesa payment request with Invoice ID:", invoice._id);
+            await billingService.processMpesaPayment(invoice._id, {
+                phoneNumber: formatPhoneNumber(phoneNumber),
+                amount: invoice.totalAmount
+            });
+
+            setCheckingStatus(true);
+            
+            // Start polling for status updates
+            const statusCheckInterval = setInterval(async () => {
+                try {
+                    console.log("Checking payment status for invoice:", invoice._id);
+                    const statusResponse = await billingService.checkPaymentStatus(invoice._id);
+                    
+                    const currentStatus = statusResponse.status.toLowerCase();
+                    console.log("Current payment status:", currentStatus);
+                    
+                    if (currentStatus === 'paid') {
+                        clearInterval(statusCheckInterval);
+                        setCheckingStatus(false);
+                        setPaymentSuccess(true);
+                        
+                        setTimeout(() => {
+                            onClose();
+                            window.location.reload();
+                        }, 2000);
+                    }
+                } catch (statusError) {
+                    console.error('Error checking payment status:', statusError);
+                }
+            }, 5000);
+            
             setTimeout(() => {
-              onClose();
-              window.location.reload(); // Refresh to get updated data
+                clearInterval(statusCheckInterval);
+                setCheckingStatus(false);
+                setPaymentError('Payment verification timed out. Please check if payment was completed and refresh the page.');
+                setProcessingPayment(false);
+            }, 60000);
+        } else {
+            await billingService.processPayment(invoice._id, { 
+                paymentMethod: paymentMethod,
+                totalAmount: invoice.totalAmount
+            });
+
+            setPaymentSuccess(true);
+            setTimeout(() => {
+                onClose();
+                window.location.reload(); 
             }, 2000);
-          }
-        } catch (statusError) {
-          console.error('Error checking payment status:', statusError);
         }
-      }, 5000);
-      
-      // Timeout after 2 minutes
-      setTimeout(() => {
-        clearInterval(statusCheckInterval);
-        setCheckingStatus(false);
-        setPaymentError('Payment verification timed out. Please check your phone for an STK push or try again.');
+    } catch (error) {
+        console.error('Error processing payment:', error);
+        setPaymentError(error.message || 'Failed to process payment. Please try again.');
         setProcessingPayment(false);
-      }, 120000);
-      
-    } else {
-      // Regular payment processing for other methods
-      await billingService.processPayment(invoice._id, { 
-        paymentMethod: paymentMethod,
-        totalAmount: invoice.totalAmount
-      });
-      
-      // Show success message
-      setPaymentSuccess(true);
-      
-      // Close modal after delay and refresh
-      setTimeout(() => {
-        onClose();
-        window.location.reload(); // Refresh to get updated data
-      }, 2000);
+        setCheckingStatus(false);
     }
-  } catch (error) {
-    console.error('Error processing payment:', error);
-    setPaymentError(error.message || 'Failed to process payment. Please try again.');
-    setProcessingPayment(false);
-    setCheckingStatus(false);
-  }
 };
   
   return (
