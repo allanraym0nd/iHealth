@@ -17,7 +17,9 @@ router.post('/create', auth, billingController.createProfile);
 router.post('/invoices/:patientId', auth, invoiceValidation, validate, billingController.createInvoice);
 router.get('/invoices', auth, billingController.getInvoices);
 router.get('/invoices/:patientId', auth, billingController.getPatientInvoices);
-router.put('/invoices/:invoiceId/payment', auth, paymentValidation, validate, billingController.processPayment);
+
+// Modified payment route to handle both regular and M-Pesa payments
+router.put('/invoices/:invoiceId/payment', auth, billingController.processPayment);
 
 // Insurance claim routes
 router.post('/insurance-claims', auth, insuranceClaimValidation, validate, billingController.submitInsuranceClaim);
@@ -27,15 +29,18 @@ router.get('/insurance-claims/:patientId', auth, billingController.getPatientIns
 // Expense routes
 router.get('/expenses', auth, billingController.getExpenses);
 router.post('/expenses', auth, billingController.trackExpenses);
+
 // Payment routes
 router.get('/payments', auth, billingController.getPayments);
 
-router.post('/billing/:billingId/invoices/:invoiceId/mpesa-payment', mpesaController.initiatePayment);
+// Keep the callback endpoint for M-Pesa
 router.post('/mpesa-callback', mpesaController.mpesaCallback);
-router.get('/billing/:billingId/invoices/:invoiceId/payment-status', mpesaController.checkPaymentStatus);
 
+// Status checking endpoint for M-Pesa
+router.get('/invoices/:invoiceId/payment-status', billingController.checkPaymentStatus);
 
-
+// In your routes file
+router.put('/invoices/:invoiceId/update-status', billingController.updatePaymentStatus);
 
 // Report routes
 router.get('/reports', auth, billingController.getFinancialReports);
