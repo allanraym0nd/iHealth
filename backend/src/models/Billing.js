@@ -39,7 +39,8 @@ const billingSchema = new mongoose.Schema({
     paidDate: Date,
     paymentMethod: {
       type: String,
-      enum: ['Cash', 'Credit Card', 'Bank Transfer', 'Insurance']
+      enum: ['Cash', 'Credit Card', 'Bank Transfer', 'Insurance','M-Pesa'],
+      required: false
     }
   }],
   expenses: [{
