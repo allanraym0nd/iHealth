@@ -20,6 +20,7 @@ const DoctorDashboard = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [userName, setUserName] = useState('');
   const [dashboardData, setDashboardData] = useState({
     patients: [],
     appointments: [],
@@ -27,6 +28,12 @@ const DoctorDashboard = () => {
   });
 
   useEffect(() => {
+    // Get username from localStorage
+    const storedName = localStorage.getItem('userName');
+    if (storedName) {
+      setUserName(storedName);
+    }
+    
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
@@ -102,17 +109,17 @@ const DoctorDashboard = () => {
         return <AppointmentScheduling />;
       case 'records':           // Make sure this case matches your navigation
         return <MedicalRecords />;
-        case 'prescriptions':  // Add this case
-      return <Prescriptions />;
+      case 'prescriptions':  // Add this case
+        return <Prescriptions />;
       case 'lab-orders':  // Add this case
-      return <LabOrders />;
-        case 'communication':
-  return <Communication />;
+        return <LabOrders />;
+      case 'communication':
+        return <Communication />;
       default:
         return renderDashboardContent();
-
     }
   };
+  
   // Dashboard overview content
   const renderDashboardContent = () => {
     if (loading) return <div className="p-4">Loading...</div>;
@@ -181,7 +188,9 @@ const DoctorDashboard = () => {
       {/* Sidebar */}
       <div className="w-64 bg-white h-full shadow-lg">
         <div className="p-4 border-b">
-          <h2 className="text-2xl font-bold text-gray-800">Doctor's Portal</h2>
+          <h2 className="text-2xl font-bold text-gray-800">
+            {userName ? `${userName}'s Portal` : "Doctor's Portal"}
+          </h2>
           <p className="text-sm text-gray-500">Welcome back</p>
         </div>
         
