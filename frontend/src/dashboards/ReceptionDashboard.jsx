@@ -1,11 +1,12 @@
 // ReceptionDashboard.jsx
 import React, { useState, useEffect } from 'react';
-import { User, Calendar, BarChart2, ClipboardList, Settings } from 'lucide-react';
+import { User, Calendar, BarChart2, ClipboardList, Settings, Users } from 'lucide-react';
 import ReceptionRegistration from './sections/ReceptionRegistration';
 import receptionService from '../api/receptionService';
 import AppointmentScheduler from './sections/AppointmentScheduler';
 import QueueManagement from './sections/QueueManagement';
 import AnalyticsDashboard from './sections/AnalyticsDashboard';
+import UserAccountManagement from './sections/UserAccountManagement';
 
 
 const ReceptionDashboard = () => {
@@ -179,6 +180,8 @@ const renderDashboardContent = () => {
         return <AppointmentScheduler />;
         case 'queue':
         return <QueueManagement />;
+        case 'accounts':  
+      return <UserAccountManagement />;
         case 'analytics':
       return <AnalyticsDashboard />;
       default:
@@ -249,6 +252,19 @@ const renderDashboardContent = () => {
                 Queue Management
               </button>
             </li>
+            <li>
+  <button
+    onClick={() => setActiveSection('accounts')}
+    className={`flex items-center w-full p-3 rounded-lg ${
+      activeSection === 'accounts' 
+        ? 'bg-blue-100 text-blue-800' 
+        : 'hover:bg-gray-100'
+    }`}
+  >
+    <Users className="mr-3" size={20} />
+    User Accounts
+  </button>
+</li>
             <li>
   <button
     onClick={() => setActiveSection('analytics')}
