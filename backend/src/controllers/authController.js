@@ -14,7 +14,12 @@ const register = async (req, res, next) => {
       age,
       gender,
       phone,
-      email 
+      email,
+      // Doctor specific fields
+      specialization,
+      office,
+      workDays,
+      workHours
     } = req.body;
     
     // Validate role
@@ -48,7 +53,7 @@ const register = async (req, res, next) => {
 
     await user.save();
 
-    // If role is patient, create patient profile
+    // Create role-specific profile
     if (role === 'patient') {
       const patient = new Patient({
         userId: user._id,
@@ -63,7 +68,32 @@ const register = async (req, res, next) => {
       });
 
       await patient.save();
+    } 
+    else if (role === 'doctor') {
+      // Import Doctor model at the top of file
+      const Doctor = require('../models/Doctor');
+      
+      const doctor = new Doctor({
+        userId: user._id,
+        name,
+        specialization: specialization || 'General Practitioner',
+        contact: {
+          phone,
+          email,
+          office: office || ''
+        },
+        schedule: {
+          workDays: workDays || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+          workHours: workHours || {
+            start: '09:00',
+            end: '17:00'
+          }
+        }
+      });
+
+      await doctor.save();
     }
+    // Add other role profiles as needed...
 
     // Generate token for instant login
     const token = jwt.sign(
