@@ -2,8 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Search, Check, X, Eye } from 'lucide-react';
 import pharmacyService from '../../api/pharmacyService';
 
-const PrescriptionModal = ({ isOpen, onClose, prescription }) => {
+const PrescriptionModal = ({ isOpen, onClose, prescription, onComplete }) => {
   if (!isOpen || !prescription) return null;
+
+  const handleComplete = async () => {
+    try {
+      await onComplete(prescription._id);
+      onClose();
+    } catch (error) {
+      console.error('Error completing prescription:', error);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -34,7 +43,7 @@ const PrescriptionModal = ({ isOpen, onClose, prescription }) => {
             </p>
           </div>
           <div>
-          <label className="block text-sm font-medium text-gray-700">Status</label>
+            <label className="block text-sm font-medium text-gray-700">Status</label>
             <span className={`inline-block mt-1 px-2 py-1 text-xs rounded-full ${
               prescription.status === 'completed' 
                 ? 'bg-green-100 text-green-800'
@@ -47,8 +56,8 @@ const PrescriptionModal = ({ isOpen, onClose, prescription }) => {
           </div>
         </div>
 
-      {/* Medications List */}
-      <div className="mb-6">
+        {/* Medications List */}
+        <div className="mb-6">
           <h4 className="text-lg font-semibold text-gray-800 mb-3">Medications</h4>
           {prescription.medications?.map((med, index) => (
             <div 
@@ -66,23 +75,32 @@ const PrescriptionModal = ({ isOpen, onClose, prescription }) => {
                 </div>
               </div>
             </div>
-            ))}
+          ))}
+        </div>
+    
+        {/* Notes Section */}
+        {prescription.notes && (
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Additional Notes
+            </label>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-gray-800">{prescription.notes}</p>
             </div>
+          </div>
+        )}
     
-            {/* Notes Section */}
-            {prescription.notes && (
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Additional Notes
-                </label>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-gray-800">{prescription.notes}</p>
-                </div>
-              </div>
-            )}
-    
-            {/* Action Buttons */}
-            <div className="flex justify-end space-x-2">
+        {/* Action Buttons */}
+        <div className="flex justify-end space-x-2">
+          {prescription.status === 'active' && (
+            <button
+              onClick={handleComplete}
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center"
+            >
+              <Check size={18} className="mr-2" />
+              Mark as Completed
+            </button>
+          )}
           <button
             onClick={onClose}
             className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
@@ -102,6 +120,7 @@ const PharmacyPrescriptions = () => {
   const [selectedPrescription, setSelectedPrescription] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [processingId, setProcessingId] = useState(null);
 
   // Fetch prescriptions
   useEffect(() => {
@@ -129,6 +148,39 @@ const PharmacyPrescriptions = () => {
     }
   };
 
+  // Handle completing a prescription
+  const handleCompletePrescription = async (prescriptionId) => {
+    try {
+      setProcessingId(prescriptionId);
+      
+      // Call the API to mark the prescription as completed
+      await pharmacyService.processPrescription(prescriptionId);
+      
+      // Update the local state
+      setPrescriptions(prevPrescriptions => 
+        prevPrescriptions.map(prescription => 
+          prescription._id === prescriptionId 
+            ? { ...prescription, status: 'completed' }
+            : prescription
+        )
+      );
+      
+      // If the selected prescription is the one being completed, update it too
+      if (selectedPrescription && selectedPrescription._id === prescriptionId) {
+        setSelectedPrescription({
+          ...selectedPrescription,
+          status: 'completed'
+        });
+      }
+      
+      setProcessingId(null);
+    } catch (error) {
+      console.error('Error completing prescription:', error);
+      setError('Failed to complete prescription. Please try again.');
+      setProcessingId(null);
+    }
+  };
+
   // Filter prescriptions based on status and search term
   const filteredPrescriptions = prescriptions.filter(prescription => {
     const matchesStatus = filterStatus === 'all' || prescription.status === filterStatus;
@@ -139,7 +191,6 @@ const PharmacyPrescriptions = () => {
   });
 
   if (isLoading) return <div className="p-4">Loading prescriptions...</div>;
-  if (error) return <div className="p-4 text-red-500">{error}</div>;
 
   return (
     <div className="p-6">
@@ -168,9 +219,16 @@ const PharmacyPrescriptions = () => {
           <option value="all">All Status</option>
           <option value="active">Active</option>
           <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
+          {/* Removed the cancelled option */}
         </select>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-3 bg-red-100 text-red-800 rounded-lg">
+          {error}
+        </div>
+      )}
 
       {/* Prescriptions List */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -212,6 +270,16 @@ const PharmacyPrescriptions = () => {
                       {prescription.status.charAt(0).toUpperCase() + prescription.status.slice(1)}
                     </span>
                     <div className="flex space-x-2">
+                      {prescription.status === 'active' && (
+                        <button 
+                          onClick={() => handleCompletePrescription(prescription._id)}
+                          className="text-green-600 hover:text-green-900"
+                          title="Mark as completed"
+                          disabled={processingId === prescription._id}
+                        >
+                          <Check size={20} />
+                        </button>
+                      )}
                       <button 
                         onClick={() => setSelectedPrescription(prescription)}
                         className="text-blue-600 hover:text-blue-900"
@@ -227,12 +295,12 @@ const PharmacyPrescriptions = () => {
         )}
       </div>
 
-      {/* Prescription Details Modal (you can add this later) */}
-
+      {/* Prescription Details Modal */}
       <PrescriptionModal 
         isOpen={selectedPrescription !== null}
         onClose={() => setSelectedPrescription(null)}
         prescription={selectedPrescription}
+        onComplete={handleCompletePrescription}
       />
     
     </div>
