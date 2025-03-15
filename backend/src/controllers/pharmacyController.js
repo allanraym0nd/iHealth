@@ -114,46 +114,69 @@ getPrescriptions: async (req, res, next) => {
   }
 },
 
-// Add a method to process prescriptions
+// Updated processPrescription method for pharmacyController.js
 processPrescription: async (req, res, next) => {
   try {
     const { prescriptionId } = req.params;
     
+    // Find the prescription first to verify it exists
+    const prescription = await Prescription.findById(prescriptionId);
+    
+    if (!prescription) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Prescription not found'
+      });
+    }
+    
+    // Only active prescriptions can be completed
+    if (prescription.status !== 'active') {
+      return res.status(400).json({
+        status: 'error',
+        message: `Cannot complete prescription with status: ${prescription.status}`
+      });
+    }
+    
     // Update prescription status 
-    const prescription = await Prescription.findByIdAndUpdate(
-      prescriptionId,
-      { 
-        status: 'completed',
-        // You might want to add more processing details
-      },
-      { new: true }
-    );
+    prescription.status = 'completed';
+    await prescription.save();
 
-    // Create a transaction in the pharmacy
-    const pharmacy = await Pharmacy.findOne();
-    pharmacy.transactions.push({
-      patient: prescription.patient,
-      medications: prescription.medications.map(med => ({
-        name: med.name,
-        quantity: med.dosage, // You might need to adjust this logic
-        price: 0 // Add pricing logic if needed
-      })),
-      date: new Date(),
-      status: 'Completed'
-    });
-    await pharmacy.save();
+    // Only create transaction if we have a valid pharmacy
+    try {
+      const pharmacy = await Pharmacy.findOne();
+      if (pharmacy) {
+        // Add transaction data in a safer way
+        pharmacy.transactions.push({
+          patient: prescription.patient,
+          medications: prescription.medications.map(med => ({
+            name: med.name,
+            quantity: med.dosage.split(' ')[0] || 1, // Get numerical value from dosage or default to 1
+            price: 0 // Add pricing logic if needed
+          })),
+          date: new Date(),
+          status: 'Completed'
+        });
+        await pharmacy.save();
+      }
+    } catch (transactionError) {
+      console.error('Error creating transaction:', transactionError);
+      // Continue even if transaction creation fails
+    }
 
     res.json({
       status: 'success',
-      message: 'Prescription processed successfully',
+      message: 'Prescription marked as completed successfully',
       data: prescription
     });
   } catch (error) {
-    next(error);
+    console.error('Error processing prescription:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to process prescription',
+      error: error.message
+    });
   }
 },
-  
-
   // Get inventory
   getInventory: async (req, res, next) => {
     try {
