@@ -160,6 +160,73 @@ deletePatient: async (patientId) => {
     console.error('Error deleting patient:', error);
     throw error;
   }
+},
+
+// Update this method in receptionService.js
+getAllUsers: async () => {
+  try {
+    const response = await api.get('/users');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    throw error;
+  }
+},
+
+// Also update these methods to use the correct endpoints
+createUser: async (userData) => {
+  try {
+    // Extract profile data
+    const { profileData, ...userAccount } = userData;
+    
+    // Format request data for the backend
+    const requestData = {
+      ...userAccount,  // username, password, role
+      
+      // Common profile fields
+      name: profileData.name,
+      email: profileData.contact?.email,
+      phone: profileData.contact?.phone,
+    };
+    
+    // Add role-specific fields
+    if (userData.role === 'doctor') {
+      requestData.specialization = profileData.specialization;
+      requestData.office = profileData.contact?.office;
+      requestData.workDays = profileData.schedule?.workDays;
+      requestData.workHours = profileData.schedule?.workHours;
+    }
+    
+    // Send to register endpoint
+    const response = await api.post('/auth/register', requestData);
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error creating user:', error);
+    throw error;
+  }
+},
+
+updateUser: async (userId, userData) => {
+  try {
+    // This endpoint may need to be created on your backend
+    const response = await api.put(`/users/${userId}`, userData);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating user:', error);
+    throw error;
+  }
+},
+
+deleteUser: async (userId) => {
+  try {
+    // Ensure this URL matches your backend route structure
+    const response = await api.delete(`/users/${userId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    throw error;
+  }
 }
 
 
