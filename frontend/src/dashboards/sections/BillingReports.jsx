@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BarChart2, FileText, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
 import { BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import billingService from '../../api/billingService';
+import ReportGenerator from '../../components/ReportGenerator'; 
 
 const BillingReports = () => {
   const [reportData, setReportData] = useState(null);
@@ -251,7 +252,7 @@ const BillingReports = () => {
       </div>
 
       {/* Detailed Reports Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Invoice Status Breakdown */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold mb-4">Invoice Status</h3>
@@ -326,8 +327,12 @@ const BillingReports = () => {
           </div>
         </div>
       </div>
+      
+      {/* Report Generator Section */}
+      <ReportGenerator />
     </div>
   );
 };
 
 export default BillingReports;
+
