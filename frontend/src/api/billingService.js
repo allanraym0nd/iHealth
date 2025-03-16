@@ -181,6 +181,27 @@ checkPaymentStatus: async (invoiceId) => {
     console.error('Error checking payment status:', error);
     throw error;
   }
+},
+
+// Add this to your existing billingService.js
+
+// Generate report
+generateReport: async (reportData) => {
+  try {
+    // For JSON format
+    if (reportData.format === 'json') {
+      const response = await api.post('/billing/reports/generate', reportData);
+      return response.data;
+    }
+    
+    // For downloadable formats (PDF, CSV, Excel), we'll use the window.open approach
+    // in the component instead of here, since those need to trigger downloads
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error generating report:', error);
+    throw error;
+  }
 }
 };
 
