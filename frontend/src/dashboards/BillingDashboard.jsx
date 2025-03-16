@@ -201,13 +201,13 @@ const BillingDashboard = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <div className="w-64 bg-white h-full shadow-lg">
+      <div className="w-64 bg-white flex flex-col h-full shadow-lg">
         <div className="p-4 border-b">
           <h2 className="text-2xl font-bold text-gray-800">Billing Portal</h2>
           <p className="text-sm text-gray-500">Finance Department</p>
         </div>
         
-        <nav className="p-4">
+        <nav className="p-4 flex-grow">
           <ul className="space-y-2">
             {sidebarItems.map((item) => (
               <li key={item.section}>
@@ -226,15 +226,18 @@ const BillingDashboard = () => {
             ))}
           </ul>
         </nav>
-
-        <div className="absolute bottom-0 w-full p-4 border-t">
-          <button onClick={() => window.location.href = '/login'} className="flex items-center w-full p-2 text-red-600 hover:bg-red-50 rounded-lg">
+  
+        <div className="p-4 border-t">
+          <button 
+            onClick={() => window.location.href = '/login'} 
+            className="flex items-center w-full p-2 text-red-600 hover:bg-red-50 rounded-lg"
+          >
             <LogOut className="mr-3" size={20} />
             <span>Logout</span>
           </button>
         </div>
       </div>
-
+  
       {/* Main Content */}
       <div className="flex-1 overflow-auto">
         {renderContent()}
