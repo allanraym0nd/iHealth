@@ -344,7 +344,7 @@ const InvoiceModal = ({ isOpen, onClose, invoice, onDownload, onPrint }) => {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Date</p>
-                <p className="font-medium">{new Date(invoice.date).toLocaleDateString()}</p>
+                <p className="font-medium">{invoice.date ? new Date(invoice.date).toLocaleDateString() : 'N/A'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Patient</p>
@@ -535,7 +535,7 @@ const BillingInvoices = () => {
 INVOICE
 
 Invoice #: INV-${invoice._id.toString().slice(-8)}
-Date: ${new Date(invoice.date).toLocaleDateString()}
+Date: ${invoice.date ? new Date(invoice.date).toLocaleDateString() : 'N/A'}
 -----------------------------------------
 
 Patient: ${invoice.patientName}
@@ -603,7 +603,7 @@ Thank you for your business!
          <div class="invoice-header">
            <div class="invoice-title">INVOICE</div>
            <p>Invoice #: INV-${invoice._id.toString().slice(-8)}</p>
-           <p>Date: ${new Date(invoice.date).toLocaleDateString()}</p>
+           <p>Date: ${invoice.date ? new Date(invoice.date).toLocaleDateString() : 'N/A'}</p>
          </div>
          
          <div class="invoice-details">
@@ -729,10 +729,10 @@ Thank you for your business!
            <tbody className="bg-white divide-y divide-gray-200">
              {filteredInvoices.length > 0 ? (
                filteredInvoices.map((invoice) => (
-                 <tr key={invoice._id} className="hover:bg-gray-50">
+                <tr key={invoice._id} className="hover:bg-gray-50">
                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">INV-{invoice._id.toString().slice(-8)}</td>
                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{invoice.patientName}</td>
-                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(invoice.date).toLocaleDateString()}</td>
+                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{invoice.date ? new Date(invoice.date).toLocaleDateString() : 'N/A'}</td>
                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">${invoice.totalAmount.toFixed(2)}</td>
                    <td className="px-6 py-4 whitespace-nowrap">
                      <span className={`px-2 py-1 text-xs rounded-full ${
