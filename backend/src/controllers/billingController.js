@@ -32,67 +32,70 @@ const billingController = {
   },
 
   // Create invoice
-  createInvoice: async (req, res, next) => {
-    try {
-      const billing = await Billing.findOne({ patient: req.params.patientId }) || 
-        new Billing({ patient: req.params.patientId, invoices: [] });
-  
-      // Calculate total amount from items
-      const calculatedTotalAmount = req.body.items.reduce((sum, item) => sum + item.amount, 0);
-  
-      const invoice = {
-        items: req.body.items,
-        totalAmount: calculatedTotalAmount,
-        status: 'Pending',
-        dueDate: new Date(Date.now() + 30*24*60*60*1000),
-        createdAt: new Date()
-      };
-  
-      const updatedBilling = await Billing.findOneAndUpdate(
-        { patient: req.params.patientId },
-        { $push: { invoices: invoice }},
-        { new: true, upsert: true }
-      );
-  
-      res.status(201).json({
-        status: 'success',
-        data: updatedBilling.invoices[updatedBilling.invoices.length - 1]
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
+  // Create invoice
+createInvoice: async (req, res, next) => {
+  try {
+    const billing = await Billing.findOne({ patient: req.params.patientId }) || 
+      new Billing({ patient: req.params.patientId, invoices: [] });
 
+    // Calculate total amount from items
+    const calculatedTotalAmount = req.body.items.reduce((sum, item) => sum + item.amount, 0);
+
+    // Explicitly set createdAt to the current date and time
+    const invoice = {
+      items: req.body.items,
+      totalAmount: calculatedTotalAmount,
+      status: 'Pending',
+      dueDate: new Date(Date.now() + 30*24*60*60*1000),
+      createdAt: new Date() // Make sure this is set
+    };
+
+    const updatedBilling = await Billing.findOneAndUpdate(
+      { patient: req.params.patientId },
+      { $push: { invoices: invoice }},
+      { new: true, upsert: true }
+    );
+
+    res.status(201).json({
+      status: 'success',
+      data: updatedBilling.invoices[updatedBilling.invoices.length - 1]
+    });
+  } catch (error) {
+    next(error);
+  }
+},
   // Get all invoices
-  getInvoices: async (req, res, next) => {
-    try {
-      const billings = await Billing.find()
-        .populate('patient', 'name');
-      
-      // Extract and format invoices
-      const invoices = [];
-      billings.forEach(billing => {
-        if (billing.invoices && billing.invoices.length > 0) {
-          billing.invoices.forEach(invoice => {
-            invoices.push({
-              _id: invoice._id,
-              patientName: billing.patient ? billing.patient.name : 'Unknown',
-              date: invoice.createdAt || new Date(),
-              dueDate: invoice.dueDate,
-              totalAmount: invoice.totalAmount,
-              status: invoice.status,
-              items: invoice.items,
-              paymentMethod: invoice.paymentMethod
-            });
+ // Get all invoices
+getInvoices: async (req, res, next) => {
+  try {
+    const billings = await Billing.find()
+      .populate('patient', 'name');
+    
+    // Extract and format invoices
+    const invoices = [];
+    billings.forEach(billing => {
+      if (billing.invoices && billing.invoices.length > 0) {
+        billing.invoices.forEach(invoice => {
+          invoices.push({
+            _id: invoice._id,
+            patientName: billing.patient ? billing.patient.name : 'Unknown',
+            date: invoice.createdAt || new Date(), // Use createdAt field here
+            dueDate: invoice.dueDate,
+            totalAmount: invoice.totalAmount,
+            status: invoice.status,
+            items: invoice.items,
+            paymentMethod: invoice.paymentMethod
           });
-        }
-      });
-      
-      res.status(200).json(invoices);
-    } catch (error) {
-      next(error);
-    }
-  },
+        });
+      }
+    });
+    
+    res.status(200).json(invoices);
+  } catch (error) {
+    next(error);
+  }
+},
+
 
   // Get payments
   getPayments: async (req, res, next) => {
