@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, TestTube, Flask as FlaskIcon, Archive, MessageSquare, Database } from 'lucide-react';
+import { Activity, TestTube, Flask as FlaskIcon, Archive, MessageSquare, Database, FileText } from 'lucide-react';
 import labService from '../api/labService';
 import TestOrders from './sections/TestOrders';
 import SampleManagement from './sections/SampleManagement';
 import ResultsManagement from './sections/ResultsManagement';
 import InventoryManagement from './sections/InventoryManagement';
 import Communication from './sections/Communication';
+import Reports from './sections/LabReports';
+
 
 const LabDashboard = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -77,10 +79,15 @@ const LabDashboard = () => {
       label: 'Inventory'
     },
     {
+      section: 'reports',
+      icon: FileText, // Import this icon at the top
+      label: 'Reports'
+    },
+    {
       section: 'communication',
       icon: MessageSquare,
       label: 'Communication'
-    }
+    },
   ];
 
   const renderDashboardContent = () => {
@@ -199,6 +206,8 @@ const LabDashboard = () => {
         return <ResultsManagement onResultAdded={refreshDashboard} />;
       case 'inventory':
         return <InventoryManagement />;
+        case 'reports':
+      return <Reports />;
       case 'communication':
         return <Communication />;
       default:
