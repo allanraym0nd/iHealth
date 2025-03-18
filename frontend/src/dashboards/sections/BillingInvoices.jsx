@@ -407,8 +407,6 @@ const InvoiceModal = ({ isOpen, onClose, invoice, onDownload, onPrint }) => {
                   >
                     <option value="Credit Card">Credit Card</option>
                     <option value="Cash">Cash</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                    <option value="Insurance">Insurance</option>
                     <option value="M-Pesa">M-Pesa</option>
                   </select>
                 </div>
