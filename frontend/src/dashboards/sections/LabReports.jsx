@@ -143,40 +143,37 @@ const LabReports = () => {
   };
 
   // Generate results report
-  const generateResultsReport = async () => {
-    try {
-      const response = await labService.getTestResults();
-      let results = response.data || [];
-      
-      // Apply date filter using the test order's scheduledDate or result date if available
-      results = results.filter(result => {
-        // If result has a date field, use that for filtering
-        if (result.results?.date) {
-          return filterByDate(result);
-        }
-        
-        // Otherwise, use the test order's scheduled date (if available)
-        return filterByDate(result);
-      });
-      
-      // Apply additional filters
-      if (filters.interpretation !== 'all' && filters.interpretation) {
-        results = results.filter(result => result.interpretation === filters.interpretation);
-      }
-      
-      if (filters.isCritical === 'true') {
-        results = results.filter(result => result.isCritical === true);
-      } else if (filters.isCritical === 'false') {
-        results = results.filter(result => result.isCritical === false);
-      }
-      
-      setReportData(prev => ({ ...prev, results }));
-      calculateResultStats(results);
-    } catch (error) {
-      console.error('Error generating results report:', error);
-      throw error;
+  // Generate results report
+const generateResultsReport = async () => {
+  try {
+    const response = await labService.getTestResults();
+    let results = response.data || [];
+    
+    console.log("Test results before filtering:", results);
+    
+    // Skip date filtering for test results as they may not have the expected date fields
+    // results = results.filter(filterByDate);
+    
+    // Apply additional filters
+    if (filters.interpretation !== 'all' && filters.interpretation) {
+      results = results.filter(result => result.interpretation === filters.interpretation);
     }
-  };
+    
+    if (filters.isCritical === 'true') {
+      results = results.filter(result => result.isCritical === true);
+    } else if (filters.isCritical === 'false') {
+      results = results.filter(result => result.isCritical === false);
+    }
+    
+    console.log("Filtered results:", results);
+    
+    setReportData(prev => ({ ...prev, results }));
+    calculateResultStats(results);
+  } catch (error) {
+    console.error('Error generating results report:', error);
+    throw error;
+  }
+};
 
   // Generate inventory report
   const generateInventoryReport = async () => {
