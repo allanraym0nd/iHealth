@@ -262,7 +262,71 @@ removeTestOrder: async (testId) => {
       console.error('Error deleting inventory item:', error);
       throw error;
     }
+  },
+
+  // Add these to your labService.js file
+generateReport: async (reportType, dateRange, filters) => {
+  try {
+    const response = await api.post('/lab/reports/generate', {
+      reportType,
+      dateRange,
+      filters
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Error generating ${reportType} report:`, error);
+    throw error;
   }
+},
+
+// For filtered data requests
+getFilteredTestOrders: async (dateRange, filters) => {
+  try {
+    const response = await api.get('/lab/reports/test-orders', {
+      params: { ...dateRange, ...filters }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching filtered test orders:', error);
+    throw error;
+  }
+},
+
+getFilteredSamples: async (dateRange, filters) => {
+  try {
+    const response = await api.get('/lab/reports/samples', {
+      params: { ...dateRange, ...filters }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching filtered samples:', error);
+    throw error;
+  }
+},
+
+getFilteredResults: async (dateRange, filters) => {
+  try {
+    const response = await api.get('/lab/reports/test-results', {
+      params: { ...dateRange, ...filters }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching filtered test results:', error);
+    throw error;
+  }
+},
+
+getFilteredInventory: async (filters) => {
+  try {
+    const response = await api.get('/lab/reports/inventory', {
+      params: { ...filters }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching filtered inventory:', error);
+    throw error;
+  }
+}
 };
 
 export default labService;
