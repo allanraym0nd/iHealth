@@ -73,4 +73,9 @@ router.get('/reports/generate', (req, res, next) => {
 // Patient routes
 router.get('/patients/all', auth, billingController.getAllPatients);
 
+
+
+router.get('/mpesa-transactions/:transactionId/status', mpesaController.checkTransactionStatus);
+router.post('/invoices/:invoiceId/simulate-payment', mpesaController.simulatePayment);
+
 module.exports = router;

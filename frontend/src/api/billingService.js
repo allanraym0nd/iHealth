@@ -202,7 +202,44 @@ generateReport: async (reportData) => {
     console.error('Error generating report:', error);
     throw error;
   }
+},
+
+// Add to your existing billingService.js object
+
+// Check M-Pesa transaction status directly with Safaricom
+checkMpesaTransactionStatus: async (transactionId) => {
+  try {
+    const response = await api.get(`/billing/mpesa-transactions/${transactionId}/status`);
+    return response.data;
+  } catch (error) {
+    console.error('Error checking M-Pesa transaction status:', error);
+    throw error;
+  }
+},
+
+// Simulate payment completion (for development and testing)
+simulatePayment: async (invoiceId) => {
+  try {
+    const response = await api.post(`/billing/invoices/${invoiceId}/simulate-payment`);
+    return response.data;
+  } catch (error) {
+    console.error('Payment simulation error:', error);
+    throw error;
+  }
+},
+
+// Manual status update (for development and testing)
+updateInvoiceStatus: async (invoiceId, status) => {
+  try {
+    const response = await api.put(`/billing/invoices/${invoiceId}/update-status`, { status });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating invoice status:', error);
+    throw error;
+  }
 }
+
+
 };
 
 export default billingService;

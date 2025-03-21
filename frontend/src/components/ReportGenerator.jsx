@@ -135,8 +135,7 @@ const ReportGenerator = () => {
             className="w-full p-2 border rounded-md"
           >
             <option value="pdf">PDF</option>
-            <option value="csv">CSV</option>
-            <option value="excel">Excel</option>
+
           </select>
         </div>
       </div>

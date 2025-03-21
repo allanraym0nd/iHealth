@@ -85,64 +85,181 @@ exports.initiatePayment = async (req, res) => {
 // Callback handler for M-Pesa
 exports.mpesaCallback = async (req, res) => {
   try {
-    // Respond immediately to Safaricom (as required by their API)
+    // Respond immediately to Safaricom
     res.status(200).json({ success: true });
-    
-    // Process the callback in the background
+
+    // Process the callback data
     const callbackData = req.body;
+    console.log('Callback received:', callbackData);
+
     const { Body } = callbackData;
-    
+
+    // Validate the callback data
+    if (!Body || !Body.stkCallback) {
+      console.error('Invalid callback data:', callbackData);
+      return;
+    }
+
+    const {
+      MerchantRequestID,
+      CheckoutRequestID,
+      ResultCode,
+      ResultDesc,
+      CallbackMetadata,
+    } = Body.stkCallback;
+
+    // Log the transaction details
+    console.log('Transaction details:', {
+      MerchantRequestID,
+      CheckoutRequestID,
+      ResultCode,
+      ResultDesc,
+    });
+
+    // Find the transaction record
+    const transaction = await MpesaTransaction.findOne({
+      merchantRequestId: MerchantRequestID,
+      checkoutRequestId: CheckoutRequestID,
+    });
+
+    if (!transaction) {
+      console.error('Transaction not found:', { MerchantRequestID, CheckoutRequestID });
+      return;
+    }
+
     // Check if it's a successful transaction
-    if (Body.stkCallback.ResultCode === 0) {
-      const callbackMetadata = Body.stkCallback.CallbackMetadata.Item;
-      const amount = callbackMetadata.find(item => item.Name === 'Amount').Value;
-      const mpesaReceiptNumber = callbackMetadata.find(item => item.Name === 'MpesaReceiptNumber').Value;
-      const phoneNumber = callbackMetadata.find(item => item.Name === 'PhoneNumber').Value;
-      
+    if (ResultCode === 0) {
+      // Extract metadata for successful transactions
+      const amount = CallbackMetadata.Item.find((item) => item.Name === 'Amount').Value;
+      const mpesaReceiptNumber = CallbackMetadata.Item.find(
+        (item) => item.Name === 'MpesaReceiptNumber'
+      ).Value;
+      const phoneNumber = CallbackMetadata.Item.find((item) => item.Name === 'PhoneNumber').Value;
+
       // Update transaction record
-      const transaction = await MpesaTransaction.findOne({
-        merchantRequestId: Body.stkCallback.MerchantRequestID,
-        checkoutRequestId: Body.stkCallback.CheckoutRequestID
-      });
-      
-      if (transaction) {
-        transaction.status = 'completed';
-        transaction.resultCode = Body.stkCallback.ResultCode;
-        transaction.resultDesc = Body.stkCallback.ResultDesc;
-        transaction.mpesaReceiptNumber = mpesaReceiptNumber;
-        transaction.metadata = callbackData;
-        await transaction.save();
-        
-        // Update billing record
-        const billing = await Billing.findById(transaction.billingId);
-        if (billing) {
-          const invoice = billing.invoices.id(transaction.invoice);
-          if (invoice) {
-            invoice.status = 'Paid';
-            invoice.paidDate = new Date();
-            invoice.paymentMethod = 'M-Pesa'; // Add M-Pesa as a payment method
-            await billing.save();
-          }
+      transaction.status = 'completed';
+      transaction.resultCode = ResultCode;
+      transaction.resultDesc = ResultDesc;
+      transaction.mpesaReceiptNumber = mpesaReceiptNumber;
+      transaction.metadata = callbackData;
+      await transaction.save();
+
+      console.log('Transaction updated:', transaction);
+
+      // Update billing record
+      const billing = await Billing.findById(transaction.billingId);
+      if (billing) {
+        const invoice = billing.invoices.id(transaction.invoice);
+        if (invoice) {
+          invoice.status = 'Paid';
+          invoice.paidDate = new Date();
+          invoice.paymentMethod = 'M-Pesa';
+          await billing.save();
+
+          console.log('Billing record updated:', billing);
         }
       }
     } else {
-      // Failed transaction
-      const transaction = await MpesaTransaction.findOne({
-        merchantRequestId: Body.stkCallback.MerchantRequestID,
-        checkoutRequestId: Body.stkCallback.CheckoutRequestID
-      });
-      
-      if (transaction) {
-        transaction.status = 'failed';
-        transaction.resultCode = Body.stkCallback.ResultCode;
-        transaction.resultDesc = Body.stkCallback.ResultDesc;
-        transaction.metadata = callbackData;
-        await transaction.save();
-      }
+      // Handle failed transactions
+      transaction.status = 'failed';
+      transaction.resultCode = ResultCode;
+      transaction.resultDesc = ResultDesc;
+      transaction.metadata = callbackData;
+      await transaction.save();
+
+      console.log('Transaction failed:', transaction);
     }
   } catch (error) {
     console.error('Error processing M-Pesa callback:', error);
-    // Don't return error to Safaricom as they expect a success response
+  }
+};
+// Add these methods to your mpesaController.js
+
+// Check transaction status directly with Safaricom
+exports.checkTransactionStatus = async (req, res) => {
+  try {
+    const { transactionId } = req.params;
+    
+    const transaction = await MpesaTransaction.findById(transactionId);
+    if (!transaction) {
+      return res.status(404).json({ message: 'Transaction not found' });
+    }
+    
+    // Check with Safaricom
+    const statusResult = await mpesaService.checkTransactionStatus(
+      transaction.checkoutRequestId
+    );
+    
+    // Update transaction based on status result
+    if (statusResult.ResultCode === 0) {
+      transaction.status = 'completed';
+      transaction.resultCode = statusResult.ResultCode;
+      transaction.resultDesc = statusResult.ResultDesc;
+      await transaction.save();
+      
+      // Update invoice status if successful
+      const billing = await Billing.findById(transaction.billingId);
+      if (billing) {
+        const invoice = billing.invoices.id(transaction.invoice);
+        if (invoice && invoice.status !== 'Paid') {
+          invoice.status = 'Paid';
+          invoice.paidDate = new Date();
+          invoice.paymentMethod = 'M-Pesa';
+          await billing.save();
+        }
+      }
+      
+      return res.status(200).json({ 
+        status: 'success', 
+        message: 'Payment completed successfully', 
+        transaction 
+      });
+    } else {
+      transaction.status = 'failed';
+      transaction.resultCode = statusResult.ResultCode;
+      transaction.resultDesc = statusResult.ResultDesc;
+      await transaction.save();
+      
+      return res.status(200).json({ 
+        status: 'failed', 
+        message: statusResult.ResultDesc, 
+        transaction 
+      });
+    }
+  } catch (error) {
+    console.error('Error checking transaction status:', error);
+    return res.status(500).json({ message: 'Failed to check transaction status' });
+  }
+};
+
+// Simulate payment completion for testing
+exports.simulatePayment = async (req, res) => {
+  try {
+    const { invoiceId } = req.params;
+    
+    const billing = await Billing.findOne({ 'invoices._id': invoiceId });
+    if (!billing) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+    
+    const invoice = billing.invoices.id(invoiceId);
+    if (!invoice) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+    
+    invoice.status = 'Paid';
+    invoice.paidDate = new Date();
+    invoice.paymentMethod = 'M-Pesa';
+    
+    await billing.save();
+    
+    return res.status(200).json({ 
+      message: 'Payment simulation completed successfully', 
+      invoice 
+    });
+  } catch (error) {
+    console.error('Payment simulation error:', error);
+    return res.status(500).json({ message: 'Failed to simulate payment' });
   }
 };
 
@@ -240,4 +357,5 @@ exports.checkPaymentStatus = async (req, res) => {
       error: error.message
     });
   }
+  
 };

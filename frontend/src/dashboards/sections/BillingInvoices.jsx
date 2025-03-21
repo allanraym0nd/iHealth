@@ -260,6 +260,7 @@ const InvoiceModal = ({ isOpen, onClose, invoice, onDownload, onPrint }) => {
     try {
         setProcessingPayment(true);
         console.log("Processing payment for Invoice ID:", invoice._id);
+        let transactionId = null;
 
         if (paymentMethod === 'M-Pesa') {
             if (!phoneNumber || !validatePhoneNumber(phoneNumber)) {
@@ -267,10 +268,14 @@ const InvoiceModal = ({ isOpen, onClose, invoice, onDownload, onPrint }) => {
             }
             
             console.log("Sending M-Pesa payment request with Invoice ID:", invoice._id);
-            await billingService.processMpesaPayment(invoice._id, {
+            const paymentResponse = await billingService.processMpesaPayment(invoice._id, {
                 phoneNumber: formatPhoneNumber(phoneNumber),
                 amount: invoice.totalAmount
             });
+            
+            // Store the transaction ID if returned from the API
+            transactionId = paymentResponse.transactionId;
+            console.log("M-Pesa transaction initiated with ID:", transactionId);
 
             setCheckingStatus(true);
             
@@ -298,11 +303,39 @@ const InvoiceModal = ({ isOpen, onClose, invoice, onDownload, onPrint }) => {
                 }
             }, 5000);
             
+            // Set timeout for payment verification
             setTimeout(() => {
                 clearInterval(statusCheckInterval);
                 setCheckingStatus(false);
-                setPaymentError('Payment verification timed out. Please check if payment was completed and refresh the page.');
-                setProcessingPayment(false);
+                
+                // If we have a transaction ID, try direct status check with Safaricom
+                if (transactionId) {
+                    setPaymentError('Payment verification in progress. Checking directly with M-Pesa...');
+                    
+                    // Direct check with Safaricom
+                    billingService.checkMpesaTransactionStatus(transactionId)
+                        .then(result => {
+                            if (result.status === 'success') {
+                                setPaymentSuccess(true);
+                                setTimeout(() => {
+                                    onClose();
+                                    window.location.reload();
+                                }, 2000);
+                            } else {
+                                setPaymentError(`Payment verification failed: ${result.message}. Please try again.`);
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Direct status check failed:', err);
+                            setPaymentError('Payment verification timed out. Please check if payment was completed and refresh the page.');
+                        })
+                        .finally(() => {
+                            setProcessingPayment(false);
+                        });
+                } else {
+                    setPaymentError('Payment verification timed out. Please check if payment was completed and refresh the page.');
+                    setProcessingPayment(false);
+                }
             }, 60000);
         } else {
             await billingService.processPayment(invoice._id, { 

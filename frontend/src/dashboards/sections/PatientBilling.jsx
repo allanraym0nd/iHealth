@@ -65,8 +65,7 @@ const PaymentModal = ({ isOpen, onClose, invoice, onPaymentComplete }) => {
             >
               <option value="credit">Credit Card</option>
               <option value="cash">Cash</option>
-              <option value="bank">Bank Transfer</option>
-              <option value="insurance">Insurance</option>
+              
             </select>
           </div>
 

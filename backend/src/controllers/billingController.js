@@ -166,18 +166,24 @@ getInvoices: async (req, res, next) => {
       // Handle M-Pesa payment specifically
       if (paymentMethod === 'M-Pesa') {
         if (!phoneNumber) {
-            return res.status(400).json({ message: 'Phone number is required for M-Pesa payment' });
+          return res.status(400).json({ message: 'Phone number is required for M-Pesa payment' });
         }
-        
+  
         if (!/^2547\d{8}$/.test(phoneNumber)) {
-            return res.status(400).json({ message: 'Invalid phone number format. Use 2547XXXXXXXX' });
+          return res.status(400).json({ message: 'Invalid phone number format. Use 2547XXXXXXXX' });
         }
-        
+  
         console.log('Processing M-Pesa Payment with:', phoneNumber); // Log phone number
-        
+  
         try {
-            const mpesaResponse = await mpesaService.initiateSTKPush(phoneNumber, invoiceAmount, invoiceId);
-    
+          // Pass the billing object to initiateSTKPush
+          const mpesaResponse = await mpesaService.initiateSTKPush(
+            phoneNumber,
+            invoiceAmount,
+            invoiceId,
+            billing // Pass the billing object
+          );
+  
           // Update invoice status to pending M-Pesa payment
           billing.invoices[invoiceIndex].status = 'Pending';
           billing.invoices[invoiceIndex].paymentMethod = 'M-Pesa';
@@ -958,7 +964,7 @@ async function generatePDFReport(reportData, res) {
   doc.pipe(res);
   
   // Add hospital header
-  doc.fontSize(20).text('MindSpeak Healthcare', { align: 'center' });
+  doc.fontSize(20).text('iHealth', { align: 'center' });
   doc.fontSize(14).text('Billing Department', { align: 'center' });
   doc.moveDown();
   
@@ -1560,6 +1566,7 @@ function generateExcelReport(reportData, res) {
       console.error('Error generating Excel:', error);
       res.status(500).send('Error generating Excel file');
     });
+    
 }
 
 module.exports = billingController;
