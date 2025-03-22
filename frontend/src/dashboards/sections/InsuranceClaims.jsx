@@ -56,7 +56,7 @@ const InsuranceClaimModal = ({ isOpen, onClose, claim }) => {
               <tbody>
                 <tr>
                   <td className="px-4 py-2 text-sm text-gray-600">Claim Amount</td>
-                  <td className="px-4 py-2 text-sm font-medium">${claim.amount.toFixed(2)}</td>
+                  <td className="px-4 py-2 text-sm font-medium">Ksh{claim.amount.toFixed(2)}</td>
                 </tr>
                 {claim.responseDate && (
                   <tr>
@@ -505,7 +505,7 @@ const InsuranceClaims = () => {
                     {new Date(claim.submissionDate).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                    ${claim.amount.toFixed(2)}
+                    Ksh{claim.amount.toFixed(2)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 py-1 text-xs rounded-full ${
