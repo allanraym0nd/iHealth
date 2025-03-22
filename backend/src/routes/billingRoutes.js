@@ -19,6 +19,8 @@ router.post('/create', auth, billingController.createProfile);
 router.post('/invoices/:patientId', auth, invoiceValidation, validate, billingController.createInvoice);
 router.get('/invoices', auth, billingController.getInvoices);
 router.get('/invoices/:patientId', auth, billingController.getPatientInvoices);
+// Add this route in billingRoutes.js
+router.get('/financial-summary', auth, billingController.getFinancialSummary);
 
 // Modified payment route to handle both regular and M-Pesa payments
 router.put('/invoices/:invoiceId/payment', auth, billingController.processPayment);
