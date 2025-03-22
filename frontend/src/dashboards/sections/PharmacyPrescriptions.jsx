@@ -130,13 +130,13 @@ const PharmacyPrescriptions = () => {
   const fetchPrescriptions = async () => {
     try {
       setIsLoading(true);
-      const response = await pharmacyService.getPrescriptions();
+      const response = await pharmacyService.getPrescriptions('all');
       
       // Ensure we have an array
       const prescriptionData = Array.isArray(response.data) 
         ? response.data 
         : (response.data?.data || []);
-
+  
       setPrescriptions(prescriptionData);
       setError(null);
     } catch (err) {
@@ -174,6 +174,9 @@ const PharmacyPrescriptions = () => {
       }
       
       setProcessingId(null);
+      
+      // Don't remove it from the list - we want to keep it visible
+      // Also consider adding a toast/notification here that indicates success
     } catch (error) {
       console.error('Error completing prescription:', error);
       setError('Failed to complete prescription. Please try again.');
