@@ -153,7 +153,7 @@ const BillingReports = () => {
             <h3 className="text-sm font-medium text-gray-500">Total Income</h3>
           </div>
           <p className="text-3xl font-bold text-gray-800">
-            ${reportData.totalIncome?.toLocaleString() || '0'}
+            Ksh {reportData.totalIncome?.toLocaleString() || '0'}
           </p>
           <p className="text-sm text-green-600 flex items-center mt-1">
             <TrendingUp size={16} className="mr-1" />
@@ -167,7 +167,7 @@ const BillingReports = () => {
             <h3 className="text-sm font-medium text-gray-500">Total Expenses</h3>
           </div>
           <p className="text-3xl font-bold text-gray-800">
-            ${reportData.totalExpenses?.toLocaleString() || '0'}
+            Ksh {reportData.totalExpenses?.toLocaleString() || '0'}
           </p>
           <p className="text-sm text-red-600 flex items-center mt-1">
             <TrendingUp size={16} className="mr-1" />
@@ -194,7 +194,7 @@ const BillingReports = () => {
             <h3 className="text-sm font-medium text-gray-500">Net Profit</h3>
           </div>
           <p className="text-3xl font-bold text-gray-800">
-            ${reportData.netProfit?.toLocaleString() || '0'}
+            Ksh {reportData.netProfit?.toLocaleString() || '0'}
           </p>
           <p className="text-sm text-green-600 flex items-center mt-1">
             <TrendingUp size={16} className="mr-1" />
@@ -211,7 +211,7 @@ const BillingReports = () => {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={revenueExpenseData}>
                 <Tooltip
-                  formatter={(value) => [`$${value.toLocaleString()}`, '']}
+                  formatter={(value) => [`Ksh ${value.toLocaleString()}`, '']}
                   labelFormatter={() => ''}
                 />
                 <Bar dataKey="value" fill="#3B82F6">
@@ -289,7 +289,7 @@ const BillingReports = () => {
                     <span className="text-gray-600">{method.name}</span>
                     <div>
                       <span className="font-medium mr-2">
-                        ${method.value.toLocaleString()}
+                        Ksh {method.value.toLocaleString()}
                       </span>
                       <span className="text-xs text-gray-500">
                         ({method.percentage}%)
@@ -315,7 +315,7 @@ const BillingReports = () => {
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, '']} />
+                      <Tooltip formatter={(value) => [`Ksh ${value.toLocaleString()}`, '']} />
                       <Legend />
                     </PieChart>
                   </ResponsiveContainer>
@@ -335,4 +335,3 @@ const BillingReports = () => {
 };
 
 export default BillingReports;
-
