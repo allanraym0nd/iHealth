@@ -52,7 +52,7 @@ const PaymentModal = ({ isOpen, onClose, invoice, onPaymentComplete }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="bg-gray-50 p-4 rounded-lg">
             <h4 className="font-medium">Invoice #{invoice.number || ('INV-' + (invoice._id?.substring(0, 8)))}</h4>
-            <p className="text-2xl font-bold text-gray-800 mt-1">${invoiceAmount.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-gray-800 mt-1">Ksh {invoiceAmount.toFixed(2)}</p>
             <p className="text-sm text-gray-600">Due by {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : 'N/A'}</p>
           </div>
 
@@ -140,7 +140,7 @@ const PaymentModal = ({ isOpen, onClose, invoice, onPaymentComplete }) => {
                   : 'bg-blue-500 hover:bg-blue-600 text-white'
               }`}
             >
-              {loading ? 'Processing...' : `Pay $${invoiceAmount.toFixed(2)}`}
+              {loading ? 'Processing...' : `Pay Ksh ${invoiceAmount.toFixed(2)}`}
             </button>
             <button
               type="button"
@@ -178,11 +178,11 @@ Status: ${invoice.status || 'N/A'}
 
 ITEMS:
 ${invoice.items ? invoice.items.map(item => 
-  `${item.service || 'Service'} - ${item.description || 'N/A'}: $${item.amount ? item.amount.toFixed(2) : '0.00'}`
-).join('\n') : invoice.description + `: $${invoiceAmount.toFixed(2)}`}
+  `${item.service || 'Service'} - ${item.description || 'N/A'}: Ksh ${item.amount ? item.amount.toFixed(2) : '0.00'}`
+).join('\n') : invoice.description + `: Ksh ${invoiceAmount.toFixed(2)}`}
 
 -----------------------------------------
-TOTAL: $${invoiceAmount.toFixed(2)}
+TOTAL: Ksh ${invoiceAmount.toFixed(2)}
 
 Thank you for your business!
 `;
@@ -265,17 +265,17 @@ const handlePrintInvoice = (invoice) => {
               <tr>
                 <td>${item.service || 'Service'}</td>
                 <td>${item.description || 'N/A'}</td>
-                <td style="text-align: right;">$${item.amount ? item.amount.toFixed(2) : '0.00'}</td>
+                <td style="text-align: right;">Ksh ${item.amount ? item.amount.toFixed(2) : '0.00'}</td>
               </tr>
             `).join('') : `
               <tr>
                 <td colspan="2">${invoice.description || 'Medical Service'}</td>
-                <td style="text-align: right;">$${invoiceAmount.toFixed(2)}</td>
+                <td style="text-align: right;">Ksh ${invoiceAmount.toFixed(2)}</td>
               </tr>
             `}
             <tr class="total-row">
               <td colspan="2" style="text-align: right;">Total</td>
-              <td style="text-align: right;">$${invoiceAmount.toFixed(2)}</td>
+              <td style="text-align: right;">Ksh ${invoiceAmount.toFixed(2)}</td>
             </tr>
           </tbody>
         </table>
@@ -371,12 +371,12 @@ const PatientBilling = () => {
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-gray-500 text-sm font-medium">Outstanding Balance</h3>
           <p className="text-3xl font-bold text-gray-800">
-            ${summaryData.outstandingBalance !== undefined ? summaryData.outstandingBalance.toFixed(2) : '0.00'}
+            Ksh {summaryData.outstandingBalance !== undefined ? summaryData.outstandingBalance.toFixed(2) : '0.00'}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-gray-500 text-sm font-medium">Last Payment</h3>
-          <p className="text-3xl font-bold text-gray-800">${summaryData.lastPayment?.amount ? summaryData.lastPayment.amount.toFixed(2) : '0.00'}</p>
+          <p className="text-3xl font-bold text-gray-800">Ksh {summaryData.lastPayment?.amount ? summaryData.lastPayment.amount.toFixed(2) : '0.00'}</p>
           {summaryData.lastPayment?.date && (
             <p className="text-sm text-gray-500">
               {new Date(summaryData.lastPayment.date).toLocaleDateString()}
@@ -439,7 +439,7 @@ const PatientBilling = () => {
                     </p>
                   </div>
                   <div className="flex items-center space-x-4">
-                    <p className="text-xl font-bold">${invoice.amount.toFixed(2)}</p>
+                    <p className="text-xl font-bold">Ksh {invoice.amount.toFixed(2)}</p>
                     <div className="flex space-x-2">
                       {invoice.status !== 'paid' && (
                         <button
