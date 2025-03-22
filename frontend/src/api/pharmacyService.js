@@ -40,9 +40,11 @@ getDashboardStats: async () => {
     },
 
     // Get all prescriptions
-    getPrescriptions: async () => {
+    getPrescriptions: async (status = 'all') => {
       try {
-        const response = await api.get('/pharmacy/prescriptions');
+        const response = await api.get('/pharmacy/prescriptions', {
+          params: { status }
+        });
         return { 
           data: response.data?.data || response.data || [],
           status: response.status 
