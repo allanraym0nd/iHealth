@@ -95,25 +95,31 @@ const pharmacyController = {
     }
   },
   // In pharmacyController.js
-getPrescriptions: async (req, res, next) => {
-  try {
-    // Fetch prescriptions that are active and ready for pharmacy processing
-    const prescriptions = await Prescription.find({ 
-      status: 'active' 
-    })
-    .populate('patient', 'name')
-    .populate('doctor', 'name')
-    .sort({ createdAt: -1 });
-
-    res.json({
-      status: 'success',
-      data: prescriptions
-    });
-  } catch (error) {
-    next(error);
-  }
-},
-
+  getPrescriptions: async (req, res, next) => {
+    try {
+      // Get the status from query parameters, default to all
+      const { status } = req.query;
+      
+      // Build the filter based on the status parameter
+      let filter = {};
+      if (status && status !== 'all') {
+        filter.status = status;
+      }
+      
+      // Fetch prescriptions with the appropriate filter
+      const prescriptions = await Prescription.find(filter)
+        .populate('patient', 'name')
+        .populate('doctor', 'name')
+        .sort({ createdAt: -1 });
+  
+      res.json({
+        status: 'success',
+        data: prescriptions
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
 // Updated processPrescription method for pharmacyController.js
 processPrescription: async (req, res, next) => {
   try {
