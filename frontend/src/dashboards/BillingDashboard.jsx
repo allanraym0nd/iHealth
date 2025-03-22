@@ -115,19 +115,20 @@ const BillingDashboard = () => {
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-gray-500 text-sm font-medium">Outstanding Invoices</h3>
             <p className="text-3xl font-bold text-gray-800">{pendingCount}</p>
-            <p className="text-sm text-gray-600">${pendingAmount.toFixed(2)} total</p>
+            <p className="text-sm text-gray-600">Ksh {pendingAmount.toFixed(2)} total</p>
+
           </div>
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-gray-500 text-sm font-medium">Payments This Month</h3>
-            <p className="text-3xl font-bold text-gray-800">${paymentsThisMonth.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-gray-800">Ksh {paymentsThisMonth.toFixed(2)}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-gray-500 text-sm font-medium">Total Income</h3>
-            <p className="text-3xl font-bold text-gray-800">${totalIncome.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-gray-800">Ksh {totalIncome.toFixed(2)}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-gray-500 text-sm font-medium">Total Expenses</h3>
-            <p className="text-3xl font-bold text-gray-800">${totalExpenses.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-gray-800">Ksh {totalExpenses.toFixed(2)}</p>
           </div>
         </div>
 
@@ -161,7 +162,7 @@ const BillingDashboard = () => {
                         <div>
                           <p className="font-medium">New invoice created</p>
                           <p className="text-sm text-gray-500">
-                            Patient: {activity.data.patientName} - ${activity.data.totalAmount.toFixed(2)}
+                            Patient: {activity.data.patientName} - Ksh{activity.data.totalAmount.toFixed(2)}
                           </p>
                         </div>
                       </>
@@ -171,7 +172,7 @@ const BillingDashboard = () => {
                         <div>
                           <p className="font-medium">Payment received</p>
                           <p className="text-sm text-gray-500">
-                            Patient: {activity.data.patientName} - ${activity.data.amount.toFixed(2)}
+                            Patient: {activity.data.patientName} - Ksh{activity.data.amount.toFixed(2)}
                           </p>
                         </div>
                       </>
