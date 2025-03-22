@@ -493,6 +493,56 @@ getInvoices: async (req, res, next) => {
     }
   },
 
+  // Add to billingController.js
+getFinancialSummary: async (req, res, next) => {
+  try {
+    const billings = await Billing.find();
+    
+    // Calculate total income (from paid invoices)
+    const paidInvoices = billings.flatMap(b => 
+      b.invoices.filter(inv => inv.status === 'Paid')
+    );
+    const totalIncome = paidInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+    
+    // Calculate total expenses
+    const expenses = billings.flatMap(b => b.expenses);
+    const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    
+    // Get recent activity (combined invoices and payments, sorted by date)
+    const recentInvoices = billings.flatMap(b => 
+      b.invoices.map(inv => ({
+        type: 'invoice',
+        id: inv._id,
+        patientName: b.patient ? b.patient.name : 'Unknown',
+        date: inv.createdAt || new Date(),
+        amount: inv.totalAmount,
+        status: inv.status
+      }))
+    );
+    
+    const recentPayments = paidInvoices.map(inv => ({
+      type: 'payment',
+      id: inv._id,
+      date: inv.paidDate || new Date(),
+      amount: inv.totalAmount,
+      method: inv.paymentMethod || 'Unknown'
+    }));
+    
+    const recentActivity = [...recentInvoices, ...recentPayments]
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 10);
+    
+    res.status(200).json({
+      totalIncome,
+      totalExpenses,
+      netProfit: totalIncome - totalExpenses,
+      recentActivity
+    });
+  } catch (error) {
+    next(error);
+  }
+},
+
   // Get expenses
   getExpenses: async (req, res, next) => {
     try {
