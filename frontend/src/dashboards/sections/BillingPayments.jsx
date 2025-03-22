@@ -29,7 +29,7 @@ const PaymentModal = ({ isOpen, onClose, payment }) => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600">Amount</label>
-              <p className="font-bold text-green-600">${payment.amount.toFixed(2)}</p>
+              <p className="font-bold text-green-600">Ksh{payment.amount.toFixed(2)}</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600">Payment Method</label>
@@ -44,7 +44,7 @@ const PaymentModal = ({ isOpen, onClose, payment }) => {
               <div className="flex justify-between items-center">
                 <div>
                   <p className="font-medium">Invoice #{payment.invoiceId}</p>
-                  <p className="text-sm text-gray-600">Total Invoice Amount: ${payment.invoiceTotal?.toFixed(2) || 'N/A'}</p>
+                  <p className="text-sm text-gray-600">Total Invoice Amount: Ksh{payment.invoiceTotal?.toFixed(2) || 'N/A'}</p>
                 </div>
                 <span className={`px-2 py-1 text-xs rounded-full ${
                   payment.status === 'completed' 
@@ -187,7 +187,7 @@ const BillingPayments = () => {
                     {new Date(payment.date).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                    ${payment.amount.toFixed(2)}
+                    Ksh{payment.amount.toFixed(2)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {payment.method}
