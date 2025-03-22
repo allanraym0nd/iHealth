@@ -32,7 +32,7 @@ const ExpenseDetailsModal = ({ isOpen, onClose, expense }) => {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Amount</p>
-                <p className="font-medium text-red-600">${expense.amount.toFixed(2)}</p>
+                <p className="font-medium text-red-600">Ksh{expense.amount.toFixed(2)}</p>
               </div>
             </div>
           </div>
@@ -365,7 +365,7 @@ const ExpenseTracking = () => {
                     {expense.description || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 text-right">
-                    ${expense.amount.toFixed(2)}
+                    Ksh{expense.amount.toFixed(2)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button 
@@ -396,7 +396,7 @@ const ExpenseTracking = () => {
           <div>
             <p className="text-sm text-gray-500">Total Expenses</p>
             <p className="text-xl font-bold text-red-600">
-              ${filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0).toFixed(2)}
+              Ksh{filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0).toFixed(2)}
             </p>
           </div>
           <div>
