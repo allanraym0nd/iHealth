@@ -21,23 +21,34 @@ const BillingDashboard = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
+        setError(null);
+        
+        // Fetch invoices
         const invoicesResponse = await billingService.getInvoices();
+        const invoices = invoicesResponse.data || invoicesResponse;
+        
+        // Fetch payments
         const paymentsResponse = await billingService.getPayments();
-        const financialData = await billingService.getFinancialReports();
-
+        const payments = paymentsResponse.data || paymentsResponse;
+        
+        // Fetch financial data (new)
+        const financialResponse = await billingService.getFinancialSummary();
+        
+        // Update dashboard data with all fetched information
         setDashboardData({
-          invoices: invoicesResponse || [],
-          payments: paymentsResponse || [],
-          financialData: financialData?.data || {}
+          invoices,
+          payments,
+          financialData: financialResponse
         });
-      } catch (error) {
-        console.error('Error fetching billing data:', error);
-        setError('Failed to load billing dashboard data');
-      } finally {
+        
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+        setError('Failed to load dashboard data');
         setLoading(false);
       }
     };
-
+  
     fetchDashboardData();
   }, []);
 
@@ -178,7 +189,6 @@ const BillingDashboard = () => {
       </div>
     );
   };
-
   const renderContent = () => {
     switch (activeSection) {
       case 'dashboard':
