@@ -237,6 +237,17 @@ updateInvoiceStatus: async (invoiceId, status) => {
     console.error('Error updating invoice status:', error);
     throw error;
   }
+},
+
+// Add to billingService.js
+getFinancialSummary: async () => {
+  try {
+    const response = await api.get('/billing/financial-summary');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching financial summary:', error);
+    throw error;
+  }
 }
 
 
