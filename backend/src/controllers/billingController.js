@@ -599,62 +599,59 @@ getFinancialSummary: async (req, res, next) => {
   },
 
   // Generate printable reports
-  generateReport: async (req, res, next) => {
-    try {
-      const { reportType, startDate, endDate, format, filters } = req.body;
-      
-      // Parse dates
-      const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-      const end = endDate ? new Date(endDate) : new Date();
-      
-      // Fetch billing data - temporarily removing date filter to show all records
-      const billings = await Billing.find().populate('patient', 'name');
-      console.log(`Found ${billings.length} billing records in total (ignoring date filter)`);
-      
-      // Process data based on report type
-      let reportData = {};
-      
-      switch (reportType) {
-        case 'financialSummary':
-          reportData = generateFinancialSummaryReport(billings, start, end);
-          break;
-        case 'invoiceDetails':
-          reportData = generateInvoiceDetailsReport(billings, start, end, filters);
-          break;
-        case 'paymentAnalysis':
-          reportData = generatePaymentAnalysisReport(billings, start, end);
-          break;
-        case 'insuranceClaims':
-          reportData = generateInsuranceClaimsReport(billings, start, end);
-          break;
-        default:
-          return res.status(400).json({ message: 'Invalid report type' });
-      }
-      
-      // Add metadata to the report
-      reportData.metadata = {
-        reportType,
-        generatedAt: new Date().toLocaleString()
-      };
-      
-      // Return appropriate format
-      if (format === 'json') {
-        return res.json(reportData);
-      } else if (format === 'pdf') {
-        return generatePDFReport(reportData, res);
-      } else if (format === 'csv') {
-        return generateCSVReport(reportData, res);
-      } else if (format === 'excel') {
-        return generateExcelReport(reportData, res);
-      }
-      
-      return res.status(400).json({ message: 'Invalid format specified' });
-    } catch (error) {
-      console.error('Report generation error:', error);
-      next(error);
+  // Generate printable reports
+generateReport: async (req, res, next) => {
+  try {
+    const { reportType, startDate, endDate, format, filters } = req.body;
+    
+    // Parse dates
+    const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const end = endDate ? new Date(endDate) : new Date();
+    
+    // Fetch billing data - temporarily removing date filter to show all records
+    const billings = await Billing.find().populate('patient', 'name');
+    console.log(`Found ${billings.length} billing records in total (ignoring date filter)`);
+    
+    // Process data based on report type
+    let reportData = {};
+    
+    switch (reportType) {
+      case 'financialSummary':
+        reportData = generateFinancialSummaryReport(billings, start, end);
+        break;
+      case 'invoiceDetails':
+        reportData = generateInvoiceDetailsReport(billings, start, end, filters);
+        break;
+      case 'paymentAnalysis':
+        reportData = generatePaymentAnalysisReport(billings, start, end);
+        break;
+      case 'insuranceClaims':
+        reportData = generateInsuranceClaimsReport(billings, start, end);
+        break;
+      default:
+        return res.status(400).json({ message: 'Invalid report type' });
     }
+    
+    // Add metadata to the report
+    reportData.metadata = {
+      reportType,
+      generatedAt: new Date().toLocaleString()
+    };
+    
+    // Return appropriate format
+    if (format === 'json') {
+      return res.json(reportData);
+    } else if (format === 'pdf') {
+      return generatePDFReport(reportData, res);
+    }
+    
+    return res.status(400).json({ message: 'Invalid format specified' });
+  } catch (error) {
+    console.error('Report generation error:', error);
+    next(error);
   }
-};
+}
+}
 
 // Helper functions for report generation
 function generateFinancialSummaryReport(billings, startDate, endDate) {
@@ -1092,9 +1089,9 @@ function addFinancialSummaryToPDF(doc, reportData) {
   
   // If we have data, continue with the normal rendering
   doc.fontSize(10);
-  doc.text(`Total Revenue: $${reportData.summary.totalIncome.toFixed(2)}`);
-  doc.text(`Total Expenses: $${reportData.summary.totalExpenses.toFixed(2)}`);
-  doc.text(`Net Profit: $${reportData.summary.netProfit.toFixed(2)}`);
+  doc.text(`Total Revenue: Ksh ${reportData.summary.totalIncome.toFixed(2)}`);
+  doc.text(`Total Expenses: Ksh ${reportData.summary.totalExpenses.toFixed(2)}`);
+  doc.text(`Net Profit: Ksh ${reportData.summary.netProfit.toFixed(2)}`);
   doc.text(`Profit Margin: ${reportData.summary.profitMargin}%`);
   doc.moveDown();
   
@@ -1119,7 +1116,7 @@ function addFinancialSummaryToPDF(doc, reportData) {
       headers: ['Method', 'Amount', 'Percentage'],
       rows: reportData.paymentMethods.map(({ method, amount, percentage }) => [
         method,
-        `$${amount.toFixed(2)}`,
+        `Ksh ${amount.toFixed(2)}`,
         `${percentage}%`
       ])
     };
@@ -1138,7 +1135,7 @@ function addFinancialSummaryToPDF(doc, reportData) {
       headers: ['Category', 'Amount', 'Percentage'],
       rows: reportData.expenses.map(({ category, amount, percentage }) => [
         category,
-        `$${amount.toFixed(2)}`,
+        `Ksh ${amount.toFixed(2)}`,
         `${percentage}%`
       ])
     };
@@ -1148,7 +1145,6 @@ function addFinancialSummaryToPDF(doc, reportData) {
 }
 
 // Add invoice details content to PDF
-// Add invoice details content to PDF
 function addInvoiceDetailsToPDF(doc, reportData) {
   // Summary section
   doc.fontSize(14).text('Invoice Summary', { underline: true });
@@ -1156,10 +1152,10 @@ function addInvoiceDetailsToPDF(doc, reportData) {
   
   doc.fontSize(10);
   doc.text(`Total Invoices: ${reportData.summary.totalInvoices || 0}`);
-  doc.text(`Total Amount: $${reportData.summary.totalAmount.toFixed(2)}`);
-  doc.text(`Paid Invoices: ${reportData.summary.paidCount || 0} ($${(reportData.summary.paidAmount || 0).toFixed(2)})`);
-  doc.text(`Pending Invoices: ${reportData.summary.pendingCount || 0} ($${(reportData.summary.pendingAmount || 0).toFixed(2)})`);
-  doc.text(`Overdue Invoices: ${reportData.summary.overdueCount || 0} ($${(reportData.summary.overdueAmount || 0).toFixed(2)})`);
+  doc.text(`Total Amount: Ksh ${reportData.summary.totalAmount.toFixed(2)}`);
+  doc.text(`Paid Invoices: ${reportData.summary.paidCount || 0} (Ksh ${(reportData.summary.paidAmount || 0).toFixed(2)})`);
+  doc.text(`Pending Invoices: ${reportData.summary.pendingCount || 0} (Ksh ${(reportData.summary.pendingAmount || 0).toFixed(2)})`);
+  doc.text(`Overdue Invoices: ${reportData.summary.overdueCount || 0} (Ksh ${(reportData.summary.overdueAmount || 0).toFixed(2)})`);
   doc.moveDown();
   
   // Invoices table
@@ -1183,7 +1179,7 @@ function addInvoiceDetailsToPDF(doc, reportData) {
           : (inv.dueDate
               ? new Date(inv.dueDate).toLocaleDateString()
               : 'Invalid Date'),
-        `$${inv.totalAmount.toFixed(2)}`,
+        `Ksh ${inv.totalAmount.toFixed(2)}`,
         inv.status
       ])
     };
@@ -1208,8 +1204,8 @@ function addPaymentAnalysisToPDF(doc, reportData) {
   
   doc.fontSize(10);
   doc.text(`Total Payments: ${reportData.summary.totalPayments}`);
-  doc.text(`Total Amount: $${reportData.summary.totalAmount.toFixed(2)}`);
-  doc.text(`Average Payment: $${reportData.summary.averagePayment}`);
+  doc.text(`Total Amount: Ksh ${reportData.summary.totalAmount.toFixed(2)}`);
+  doc.text(`Average Payment: Ksh ${reportData.summary.averagePayment}`);
   doc.moveDown();
   
   // Payment methods breakdown
@@ -1223,7 +1219,7 @@ function addPaymentAnalysisToPDF(doc, reportData) {
       rows: reportData.paymentMethods.map(method => [
         method.method,
         method.count.toString(),
-        `$${method.amount.toFixed(2)}`,
+        `Ksh ${method.amount.toFixed(2)}`,
         `${method.percentage}%`
       ])
     };
@@ -1243,7 +1239,7 @@ function addPaymentAnalysisToPDF(doc, reportData) {
       rows: reportData.payments.map(payment => [
         payment.patientName,
         new Date(payment.paidDate).toLocaleDateString(),
-        `$${payment.amount.toFixed(2)}`,
+        `Ksh ${payment.amount.toFixed(2)}`,
         payment.paymentMethod
       ])
     };
@@ -1266,7 +1262,7 @@ function addInsuranceClaimsToPDF(doc, reportData) {
   
   doc.fontSize(10);
   doc.text(`Total Claims: ${reportData.summary.totalClaims}`);
-  doc.text(`Total Amount: $${reportData.summary.totalAmount.toFixed(2)}`);
+  doc.text(`Total Amount: Ksh ${reportData.summary.totalAmount.toFixed(2)}`);
   doc.text(`Submitted: ${reportData.summary.submittedCount}`);
   doc.text(`Processing: ${reportData.summary.processingCount}`);
   doc.text(`Approved: ${reportData.summary.approvedCount}`);
@@ -1285,7 +1281,7 @@ function addInsuranceClaimsToPDF(doc, reportData) {
       rows: reportData.providerBreakdown.map(provider => [
         provider.provider,
         provider.count.toString(),
-        `$${provider.amount.toFixed(2)}`,
+        `Ksh ${provider.amount.toFixed(2)}`,
         `${provider.percentage}%`
       ])
     };
@@ -1307,7 +1303,7 @@ function addInsuranceClaimsToPDF(doc, reportData) {
         claim.provider,
         claim.claimNumber,
         new Date(claim.submissionDate).toLocaleDateString(),
-        `$${claim.amount.toFixed(2)}`,
+        `Ksh ${claim.amount.toFixed(2)}`,
         claim.status
       ])
     };
@@ -1366,257 +1362,4 @@ function drawTable(doc, table) {
   doc.y = y + 10;
 }
 
-// Generate CSV report
-function generateCSVReport(reportData, res) {
-  const { Parser } = require('json2csv');
-  let fields, data;
-  
-  // Format based on report type
-  switch (reportData.title) {
-    case 'Financial Summary Report':
-      // For financial summary, create a simplified CSV
-      const financialData = [
-        { Category: 'Total Revenue', Value: `$${reportData.summary.totalIncome.toFixed(2)}` },
-        { Category: 'Total Expenses', Value: `$${reportData.summary.totalExpenses.toFixed(2)}` },
-        { Category: 'Net Profit', Value: `$${reportData.summary.netProfit.toFixed(2)}` },
-        { Category: 'Profit Margin', Value: `${reportData.summary.profitMargin}%` },
-        { Category: 'Total Invoices', Value: reportData.invoices.total },
-        { Category: 'Paid Invoices', Value: reportData.invoices.paid },
-        { Category: 'Pending Invoices', Value: reportData.invoices.pending },
-        { Category: 'Overdue Invoices', Value: reportData.invoices.overdue }
-      ];
-      
-      // Add payment methods
-      reportData.paymentMethods.forEach(method => {
-        financialData.push({ 
-          Category: `Payment Method: ${method.method}`, 
-          Value: `$${method.amount.toFixed(2)} (${method.percentage}%)` 
-        });
-      });
-      
-      // Add expenses
-      reportData.expenses.forEach(expense => {
-        financialData.push({ 
-          Category: `Expense: ${expense.category}`, 
-          Value: `$${expense.amount.toFixed(2)} (${expense.percentage}%)` 
-        });
-      });
-      
-      fields = ['Category', 'Value'];
-      data = financialData;
-      break;
-      
-    case 'Invoice Details Report':
-      // For invoice details, provide full invoice list
-      fields = [
-        { label: 'Patient', value: 'patientName' },
-        { label: 'Date', value: row => new Date(row.createdAt).toLocaleDateString() },
-        { label: 'Due Date', value: row => new Date(row.dueDate).toLocaleDateString() },
-        { label: 'Paid Date', value: row => row.paidDate ? new Date(row.paidDate).toLocaleDateString() : '' },
-        { label: 'Amount', value: row => `$${row.totalAmount.toFixed(2)}` },
-        { label: 'Status', value: 'status' },
-        { label: 'Payment Method', value: 'paymentMethod' }
-      ];
-      data = reportData.invoices;
-      break;
-      
-    case 'Payment Analysis Report':
-      // For payment analysis, provide full payment list
-      fields = [
-        { label: 'Patient', value: 'patientName' },
-        { label: 'Date', value: row => new Date(row.paidDate).toLocaleDateString() },
-        { label: 'Amount', value: row => `$${row.amount.toFixed(2)}` },
-        { label: 'Method', value: 'paymentMethod' }
-      ];
-      data = reportData.payments;
-      break;
-      
-    case 'Insurance Claims Report':
-      // For insurance claims, provide full claims list
-      fields = [
-        { label: 'Patient', value: 'patientName' },
-        { label: 'Provider', value: 'provider' },
-        { label: 'Claim Number', value: 'claimNumber' },
-        { label: 'Submission Date', value: row => new Date(row.submissionDate).toLocaleDateString() },
-        { label: 'Response Date', value: row => row.responseDate ? new Date(row.responseDate).toLocaleDateString() : '' },
-        { label: 'Amount', value: row => `$${row.amount.toFixed(2)}` },
-        { label: 'Status', value: 'status' },
-        { label: 'Notes', value: 'notes' }
-      ];
-      data = reportData.claims;
-      break;
-      
-    default:
-      // Generic format
-      fields = Object.keys(reportData.summary || {});
-      data = [reportData.summary || {}];
-  }
-  
-  const json2csvParser = new Parser({ fields });
-  const csv = json2csvParser.parse(data);
-  
-  // Set response headers
-  res.setHeader('Content-Type', 'text/csv');
-  res.setHeader(
-    'Content-Disposition', 
-    `attachment; filename=${reportData.title.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.csv`
-  );
-  
-  // Send CSV
-  res.send(csv);
-}
-
-// Generate Excel report
-function generateExcelReport(reportData, res) {
-  const Excel = require('exceljs');
-  const workbook = new Excel.Workbook();
-  const worksheet = workbook.addWorksheet(reportData.title);
-  
-  // Add report header
-  worksheet.mergeCells('A1:E1');
-  worksheet.getCell('A1').value = 'MindSpeak Healthcare - Billing Department';
-  worksheet.getCell('A1').font = { size: 14, bold: true };
-  worksheet.getCell('A1').alignment = { horizontal: 'center' };
-  
-  worksheet.mergeCells('A2:E2');
-  worksheet.getCell('A2').value = reportData.title;
-  worksheet.getCell('A2').font = { size: 12, bold: true };
-  worksheet.getCell('A2').alignment = { horizontal: 'center' };
-  
-  worksheet.mergeCells('A3:E3');
-  worksheet.getCell('A3').value = `Period: ${reportData.dateRange}`;
-  worksheet.getCell('A3').alignment = { horizontal: 'center' };
-  
-  worksheet.mergeCells('A4:E4');
-  worksheet.getCell('A4').value = `Generated: ${new Date().toLocaleString()}`;
-  worksheet.getCell('A4').alignment = { horizontal: 'center' };
-  
-  // Add content based on report type
-  let currentRow = 6;
-  
-  switch (reportData.title) {
-    case 'Financial Summary Report':
-      // Summary section
-      worksheet.getCell(`A${currentRow}`).value = 'Financial Summary';
-      worksheet.getCell(`A${currentRow}`).font = { bold: true };
-      currentRow += 2;
-      
-      worksheet.getCell(`A${currentRow}`).value = 'Total Revenue';
-      worksheet.getCell(`B${currentRow}`).value = reportData.summary.totalIncome;
-      worksheet.getCell(`B${currentRow}`).numFmt = '$#,##0.00';
-      currentRow++;
-      
-      worksheet.getCell(`A${currentRow}`).value = 'Total Expenses';
-      worksheet.getCell(`B${currentRow}`).value = reportData.summary.totalExpenses;
-      worksheet.getCell(`B${currentRow}`).numFmt = '$#,##0.00';
-      currentRow++;
-      
-      worksheet.getCell(`A${currentRow}`).value = 'Net Profit';
-      worksheet.getCell(`B${currentRow}`).value = reportData.summary.netProfit;
-      worksheet.getCell(`B${currentRow}`).numFmt = '$#,##0.00';
-      currentRow++;
-      
-      worksheet.getCell(`A${currentRow}`).value = 'Profit Margin';
-      worksheet.getCell(`B${currentRow}`).value = reportData.summary.profitMargin + '%';
-      currentRow += 2;
-      
-      // Invoice statistics
-      worksheet.getCell(`A${currentRow}`).value = 'Invoice Statistics';
-      worksheet.getCell(`A${currentRow}`).font = { bold: true };
-      currentRow += 2;
-      
-      worksheet.getCell(`A${currentRow}`).value = 'Total Invoices';
-      worksheet.getCell(`B${currentRow}`).value = reportData.invoices.total;
-      currentRow++;
-      
-      worksheet.getCell(`A${currentRow}`).value = 'Paid Invoices';
-      worksheet.getCell(`B${currentRow}`).value = reportData.invoices.paid;
-      currentRow++;
-      
-      worksheet.getCell(`A${currentRow}`).value = 'Pending Invoices';
-      worksheet.getCell(`B${currentRow}`).value = reportData.invoices.pending;
-      currentRow++;
-      
-      worksheet.getCell(`A${currentRow}`).value = 'Overdue Invoices';
-      worksheet.getCell(`B${currentRow}`).value = reportData.invoices.overdue;
-      currentRow += 2;
-      
-      // Payment Methods
-      if (reportData.paymentMethods && reportData.paymentMethods.length > 0) {
-        worksheet.getCell(`A${currentRow}`).value = 'Payment Methods';
-        worksheet.getCell(`A${currentRow}`).font = { bold: true };
-        currentRow += 1;
-        
-        // Headers
-        worksheet.getCell(`A${currentRow}`).value = 'Method';
-        worksheet.getCell(`B${currentRow}`).value = 'Amount';
-        worksheet.getCell(`C${currentRow}`).value = 'Percentage';
-        worksheet.getRow(currentRow).font = { bold: true };
-        currentRow++;
-        
-        // Data rows
-        reportData.paymentMethods.forEach(method => {
-          worksheet.getCell(`A${currentRow}`).value = method.method;
-          worksheet.getCell(`B${currentRow}`).value = method.amount;
-          worksheet.getCell(`B${currentRow}`).numFmt = '$#,##0.00';
-          worksheet.getCell(`C${currentRow}`).value = method.percentage + '%';
-          currentRow++;
-        });
-        currentRow++;
-      }
-      
-      // Expense Categories
-      if (reportData.expenses && reportData.expenses.length > 0) {
-        worksheet.getCell(`A${currentRow}`).value = 'Expense Categories';
-        worksheet.getCell(`A${currentRow}`).font = { bold: true };
-        currentRow += 1;
-        
-        // Headers
-        worksheet.getCell(`A${currentRow}`).value = 'Category';
-        worksheet.getCell(`B${currentRow}`).value = 'Amount';
-        worksheet.getCell(`C${currentRow}`).value = 'Percentage';
-        worksheet.getRow(currentRow).font = { bold: true };
-        currentRow++;
-        
-        // Data rows
-        reportData.expenses.forEach(expense => {
-          worksheet.getCell(`A${currentRow}`).value = expense.category;
-          worksheet.getCell(`B${currentRow}`).value = expense.amount;
-          worksheet.getCell(`B${currentRow}`).numFmt = '$#,##0.00';
-          worksheet.getCell(`C${currentRow}`).value = expense.percentage + '%';
-          currentRow++;
-        });
-      }
-      break;
-      
-    case 'Invoice Details Report':
-      // Similar Excel generation for other report types
-      // ... 
-      break;
-    
-    // Other report types
-    // ...
-  }
-  
-  // Auto-fit columns
-  worksheet.columns.forEach(column => {
-    column.width = 15;
-  });
-  
-  // Set response headers
-  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader(
-    'Content-Disposition', 
-    `attachment; filename=${reportData.title.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.xlsx`
-  );
-  
-  // Write to response
-  workbook.xlsx.write(res)
-    .catch(error => {
-      console.error('Error generating Excel:', error);
-      res.status(500).send('Error generating Excel file');
-    });
-    
-}
-
-module.exports = billingController;
+module.exports= billingController;
