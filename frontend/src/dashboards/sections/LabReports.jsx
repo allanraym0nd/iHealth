@@ -75,47 +75,61 @@ const LabReports = () => {
   };
 
   // Generate test orders report
-  const generateTestOrdersReport = async () => {
-    try {
-      const pendingResponse = await labService.getPendingTests();
-      const completedResponse = await labService.getCompletedTests();
-      
-      // Get all test orders
-      const allTestOrders = await labService.getTestOrders();
-      
-      // Combine all test data
-      let testOrders = [
-        ...(pendingResponse.data || []), 
-        ...(completedResponse.data || [])
-      ];
-      
-      // Remove duplicates (if any)
-      const testOrderMap = new Map();
-      testOrders.forEach(order => {
-        testOrderMap.set(order._id, order);
+  // Fixed generateTestOrdersReport function
+const generateTestOrdersReport = async () => {
+  try {
+    // Get pending and completed tests
+    const pendingResponse = await labService.getPendingTests();
+    const completedResponse = await labService.getCompletedTests();
+    
+    // Also specifically get tests with sample_collected status
+    // We'll now use the getTestsReadyForResults endpoint which includes sample_collected tests
+    const readyForResultsResponse = await labService.getTestsReadyForResults();
+    
+    // Get all test orders as a backup to ensure we don't miss any
+    const allTestOrders = await labService.getTestOrders();
+    
+    // Combine all test data
+    let testOrders = [
+      ...(pendingResponse.data || []), 
+      ...(completedResponse.data || []),
+      ...(readyForResultsResponse.data || []) // Add this line to include sample_collected tests
+    ];
+    
+    console.log('All combined test orders before filtering:', testOrders);
+    
+    // Remove duplicates (if any)
+    const testOrderMap = new Map();
+    testOrders.forEach(order => {
+      testOrderMap.set(order._id, order);
+    });
+    testOrders = Array.from(testOrderMap.values());
+    
+    // Apply date filter
+    testOrders = testOrders.filter(filterByDate);
+    
+    // Apply additional filters
+    if (filters.status !== 'all') {
+      console.log(`Filtering by status: ${filters.status}`);
+      testOrders = testOrders.filter(order => {
+        console.log(`Order status: ${order.status}, comparing with: ${filters.status}`);
+        return order.status === filters.status;
       });
-      testOrders = Array.from(testOrderMap.values());
-      
-      // Apply date filter
-      testOrders = testOrders.filter(filterByDate);
-      
-      // Apply additional filters
-      if (filters.status !== 'all') {
-        testOrders = testOrders.filter(order => order.status === filters.status);
-      }
-      
-      if (filters.testType !== 'all') {
-        testOrders = testOrders.filter(order => order.testType === filters.testType);
-      }
-      
-      setReportData(prev => ({ ...prev, testOrders }));
-      calculateTestStats(testOrders);
-    } catch (error) {
-      console.error('Error generating test orders report:', error);
-      throw error;
     }
-  };
-
+    
+    if (filters.testType !== 'all') {
+      testOrders = testOrders.filter(order => order.testType === filters.testType);
+    }
+    
+    console.log('Filtered test orders:', testOrders);
+    
+    setReportData(prev => ({ ...prev, testOrders }));
+    calculateTestStats(testOrders);
+  } catch (error) {
+    console.error('Error generating test orders report:', error);
+    throw error;
+  }
+};
   // Generate samples report
   const generateSamplesReport = async () => {
     try {
@@ -617,9 +631,7 @@ const generateResultsReport = async () => {
               >
                 <option value="all">All Statuses</option>
                 <option value="collected">Collected</option>
-                <option value="processing">Processing</option>
-                <option value="stored">Stored</option>
-                <option value="disposed">Disposed</option>
+                
               </select>
             </div>
             <div>
