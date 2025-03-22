@@ -217,9 +217,7 @@ const SampleManagement = () => {
         >
           <option value="all">All Status</option>
           <option value="collected">Collected</option>
-          <option value="processing">Processing</option>
-          <option value="stored">Stored</option>
-          <option value="disposed">Disposed</option>
+
         </select>
       </div>
 
