@@ -167,7 +167,7 @@ useEffect(() => {
                    />
                  </div>
                  <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Amount ($)</label>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Amount (Ksh)</label>
                    <input
                      type="number"
                      step="0.01"
@@ -196,7 +196,7 @@ useEffect(() => {
            <div className="bg-gray-100 p-3 rounded-lg mt-2">
              <div className="flex justify-between items-center">
                <span className="font-medium">Total Amount:</span>
-               <span className="font-bold">${formData.totalAmount.toFixed(2)}</span>
+               <span className="font-bold">Ksh{formData.totalAmount.toFixed(2)}</span>
              </div>
            </div>
          </div>
@@ -414,12 +414,12 @@ const InvoiceModal = ({ isOpen, onClose, invoice, onDownload, onPrint }) => {
                   <tr key={index}>
                     <td className="px-4 py-2 text-sm text-gray-900">{item.service}</td>
                     <td className="px-4 py-2 text-sm text-gray-500">{item.description}</td>
-                    <td className="px-4 py-2 text-sm text-gray-900 text-right">${item.amount.toFixed(2)}</td>
+                    <td className="px-4 py-2 text-sm text-gray-900 text-right">Ksh{item.amount.toFixed(2)}</td>
                   </tr>
                 ))}
                 <tr className="bg-gray-50">
                   <td colSpan="2" className="px-4 py-2 text-sm font-medium text-right">Total</td>
-                  <td className="px-4 py-2 text-sm font-bold text-right">${invoice.totalAmount.toFixed(2)}</td>
+                  <td className="px-4 py-2 text-sm font-bold text-right">Ksh{invoice.totalAmount.toFixed(2)}</td>
                 </tr>
               </tbody>
             </table>
@@ -573,10 +573,10 @@ Patient: ${invoice.patientName}
 Status: ${invoice.status}
 
 ITEMS:
-${invoice.items.map(item => `${item.service} - ${item.description || 'N/A'}: $${item.amount.toFixed(2)}`).join('\n')}
+${invoice.items.map(item => `${item.service} - ${item.description || 'N/A'}: Ksh ${item.amount.toFixed(2)}`).join('\n')}
 
 -----------------------------------------
-TOTAL: $${invoice.totalAmount.toFixed(2)}
+TOTAL: Ksh ${invoice.totalAmount.toFixed(2)}
 
 Thank you for your business!
 `;
@@ -661,12 +661,12 @@ Thank you for your business!
                <tr>
                  <td>${item.service}</td>
                  <td>${item.description || 'N/A'}</td>
-                 <td style="text-align: right;">$${item.amount.toFixed(2)}</td>
+                 <td style="text-align: right;">Ksh ${item.amount.toFixed(2)}</td>
                </tr>
              `).join('')}
              <tr class="total-row">
                <td colspan="2" style="text-align: right;">Total</td>
-               <td style="text-align: right;">$${invoice.totalAmount.toFixed(2)}</td>
+               <td style="text-align: right;">${invoice.totalAmount.toFixed(2)}</td>
              </tr>
            </tbody>
          </table>
@@ -764,7 +764,7 @@ Thank you for your business!
                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">INV-{invoice._id.toString().slice(-8)}</td>
                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{invoice.patientName}</td>
                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{invoice.date ? new Date(invoice.date).toLocaleDateString() : 'N/A'}</td>
-                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">${invoice.totalAmount.toFixed(2)}</td>
+                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">Ksh{invoice.totalAmount.toFixed(2)}</td>
                    <td className="px-6 py-4 whitespace-nowrap">
                      <span className={`px-2 py-1 text-xs rounded-full ${
                        invoice.status.toLowerCase() === 'paid' 
