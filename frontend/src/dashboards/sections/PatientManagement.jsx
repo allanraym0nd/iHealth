@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit, Trash2 } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import doctorService from '../../api/doctorService';
 
 const AddPatientModal = ({ isOpen, onClose, onPatientAdded }) => {
@@ -274,7 +274,7 @@ const PatientManagement = () => {
         Showing {filteredPatients.length} of {patients.length} patients
       </div>
 
-      {/* Patients Table */}
+      {/* Patients Table - Removed Last Visit and Actions columns */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50">
@@ -283,15 +283,13 @@ const PatientManagement = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Visit</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredPatients.length === 0 ? (
               <tr>
-                <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
                   {searchTerm || filterStatus ? "No patients match your search criteria" : "No patients found"}
                 </td>
               </tr>
@@ -303,9 +301,6 @@ const PatientManagement = () => {
                   <td className="px-6 py-4 whitespace-nowrap">{patient.age || 'N/A'}</td>
                   <td className="px-6 py-4 whitespace-nowrap">{patient.contact?.phone || 'N/A'}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {patient.lastVisit ? new Date(patient.lastVisit).toLocaleDateString() : 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 text-sm rounded-full ${
                       patient.status === 'active' 
                         ? 'bg-green-100 text-green-800' 
@@ -313,16 +308,6 @@ const PatientManagement = () => {
                     }`}>
                       {patient.status || 'Active'}
                     </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex space-x-2">
-                      <button className="text-blue-600 hover:text-blue-900">
-                        <Edit size={18} />
-                      </button>
-                      <button className="text-red-600 hover:text-red-900">
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
                   </td>
                 </tr>
               ))
