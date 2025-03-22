@@ -6,12 +6,14 @@ import {
   Repeat, 
   AlertCircle, 
   LogOut, 
-  Activity 
+  Activity,
+  FileText 
 } from 'lucide-react';
 import pharmacyService from '../api/pharmacyService';
 import PharmacyPrescriptions from './sections/PharmacyPrescriptions';
 import PharmacyInventory from './sections/PharmacyInventory';
 import PharmacyRefills from './sections/PharmacyRefills';
+import PharmacyReports from './sections/PharmacyReports';
 
 const PharmacyDashboard = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -78,6 +80,11 @@ const PharmacyDashboard = () => {
       section: 'refills',
       icon: Repeat,
       label: 'Refill Requests'
+    },
+    {
+      section: 'reports',  // Add the new reports section
+      icon: FileText,
+      label: 'Reports'
     }
   ];
 
@@ -177,6 +184,8 @@ const PharmacyDashboard = () => {
         return <PharmacyInventory />;
       case 'refills':
         return <PharmacyRefills />;
+        case 'reports':  // Add case for reports section
+      return <PharmacyReports />;
       default:
         return renderDashboardContent();
     }
